@@ -24,26 +24,31 @@ type ShellUser = {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const isLogin = pathname === '/login'
+
+  const isPublicRoute = pathname === '/' || pathname === '/login'
 
   const [currentUser, setCurrentUser] = useState<ShellUser | null>(null)
   const [time, setTime] = useState<Date | null>(null)
   const [isOnline, setIsOnline] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [isCheckingSession, setIsCheckingSession] = useState(!isLogin)
+  const [isCheckingSession, setIsCheckingSession] = useState(!isPublicRoute)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSavingAccount, setIsSavingAccount] = useState(false)
 
   useEffect(() => {
-    if (isLogin) return
+    if (isPublicRoute) return
 
     setTime(new Date())
-    const timer = setInterval(() => setTime(new Date()), 1000)
+
+    const timer = setInterval(() => {
+      setTime(new Date())
+    }, 1000)
+
     return () => clearInterval(timer)
-  }, [isLogin])
+  }, [isPublicRoute])
 
   useEffect(() => {
-    if (isLogin) return
+    if (isPublicRoute) return
 
     setIsOnline(navigator.onLine)
 
@@ -57,19 +62,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
-  }, [isLogin])
+  }, [isPublicRoute])
 
   useEffect(() => {
-    if (isLogin) {
+    if (isPublicRoute) {
       setIsCheckingSession(false)
       return
     }
+
+    let isMounted = true
 
     async function loadSession() {
       try {
         setIsCheckingSession(true)
 
         const result = await me()
+
+        if (!isMounted) return
 
         const mappedUser: ShellUser = {
           name: result.user.name ?? null,
@@ -83,23 +92,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         localStorage.setItem('ordr-user', JSON.stringify(result.user))
         window.dispatchEvent(new Event('ordr-user-updated'))
       } catch {
+        if (!isMounted) return
+
         localStorage.removeItem('ordr-user')
         window.dispatchEvent(new Event('ordr-user-updated'))
-        router.push('/login')
+        router.replace('/login')
       } finally {
-        setIsCheckingSession(false)
+        if (isMounted) {
+          setIsCheckingSession(false)
+        }
       }
     }
 
     loadSession()
-  }, [isLogin, router])
+
+    return () => {
+      isMounted = false
+    }
+  }, [isPublicRoute, router])
 
   const handleLogout = useCallback(async () => {
     try {
       setIsLoggingOut(true)
+
       await logout()
+
       localStorage.removeItem('ordr-user')
       window.dispatchEvent(new Event('ordr-user-updated'))
+
       setCurrentUser(null)
       window.location.href = '/login'
     } catch (error) {
@@ -135,6 +155,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem('ordr-user', JSON.stringify(result.user))
       window.dispatchEvent(new Event('ordr-user-updated'))
+
       setIsEditModalOpen(false)
     } catch (error) {
       console.error('Erro ao salvar conta:', error)
@@ -145,18 +166,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   const pageTitle = useMemo(() => {
-    if (pathname === '/') return 'Ponto de Venda'
+    if (pathname === '/') return 'Ordr'
+    if (pathname.startsWith('/PDV')) return 'Ponto de Venda'
     if (pathname.startsWith('/interno')) return 'PDV Interno'
+    if (pathname.startsWith('/pedidos')) return 'Pedidos'
     if (pathname.startsWith('/produtos')) return 'Produtos'
     if (pathname.startsWith('/clientes')) return 'Clientes'
     if (pathname.startsWith('/relatorios')) return 'Relatórios'
     if (pathname.startsWith('/dispositivos')) return 'Dispositivos'
+    if (pathname.startsWith('/configuracoes')) return 'Configurações'
     if (pathname.startsWith('/estoque')) return 'Estoque'
     if (pathname.startsWith('/pessoas')) return 'Pessoas'
     if (pathname.startsWith('/eventos')) return 'Eventos'
     if (pathname.startsWith('/compras')) return 'Compras'
     if (pathname.startsWith('/acessos')) return 'Acessos'
     if (pathname.startsWith('/auditoria')) return 'Auditoria'
+    if (pathname.startsWith('/impressoras')) return 'Impressoras'
+
     return 'Ordr'
   }, [pathname])
 
@@ -174,7 +200,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [currentUser])
 
-  if (isLogin) {
+  if (isPublicRoute) {
     return <>{children}</>
   }
 
@@ -208,7 +234,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             }
           />
 
-          <main className="flex-1 min-h-0 overflow-auto pb-24 lg:pb-0">{children}</main>
+          <main className="flex-1 min-h-0 overflow-auto pb-24 lg:pb-0">
+            {children}
+          </main>
+
           <MobileBottomNav />
         </div>
       </div>
