@@ -1,12 +1,11 @@
 function getApiBaseUrl() {
-  if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol
-    const hostname = window.location.hostname
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
-    return `${protocol}//${hostname}:3000`
+  if (apiUrl) {
+    return apiUrl.replace(/\/$/, '')
   }
 
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+  return 'http://localhost:3000'
 }
 
 function getCompanyIdFromStorage() {

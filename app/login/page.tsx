@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties, FormEvent, ReactNode } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   motion,
   useMotionTemplate,
@@ -22,7 +22,8 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-import { login } from '@/lib/api'
+import { login, me } from '@/lib/api'
+import { getFirstAllowedPath } from '@/lib/auth-routing'
 
 const BRAND_ORANGE = '#dd7c12'
 
@@ -42,6 +43,7 @@ export default function LoginPage() {
     stiffness: 120,
     damping: 20,
   })
+
   const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-2.5, 2.5]), {
     stiffness: 120,
     damping: 20,
@@ -55,6 +57,34 @@ export default function LoginPage() {
     return username.trim().length > 0 && password.trim().length > 0 && !loading
   }, [username, password, loading])
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function redirectIfAlreadyLoggedIn() {
+      try {
+        const result = await me()
+
+        if (!isMounted) return
+
+        localStorage.setItem('ordr-user', JSON.stringify(result.user))
+        window.dispatchEvent(new Event('ordr-user-updated'))
+
+        router.replace(getFirstAllowedPath(result.user))
+      } catch {
+        if (!isMounted) return
+
+        localStorage.removeItem('ordr-user')
+        window.dispatchEvent(new Event('ordr-user-updated'))
+      }
+    }
+
+    redirectIfAlreadyLoggedIn()
+
+    return () => {
+      isMounted = false
+    }
+  }, [router])
+
   async function handleLogin() {
     if (!canSubmit) return
 
@@ -65,9 +95,12 @@ export default function LoginPage() {
       const result = await login(username.trim(), password)
 
       localStorage.setItem('ordr-user', JSON.stringify(result.user))
-      router.push('/PDV')
+      window.dispatchEvent(new Event('ordr-user-updated'))
+
+      router.replace(getFirstAllowedPath(result.user))
     } catch (err) {
       localStorage.removeItem('ordr-user')
+      window.dispatchEvent(new Event('ordr-user-updated'))
 
       const message =
         err instanceof Error
@@ -311,6 +344,7 @@ export default function LoginPage() {
                   >
                     Bem-vindo de volta
                   </motion.h2>
+
                   <motion.p
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -336,7 +370,11 @@ export default function LoginPage() {
                         onChange={(event) => setUsername(event.target.value)}
                         autoComplete="username"
                         className="h-14 w-full rounded-2xl border border-border bg-background/70 pl-12 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-4"
-                        style={{ '--tw-ring-color': 'rgba(221,124,18,0.15)' } as CSSProperties}
+                        style={
+                          {
+                            '--tw-ring-color': 'rgba(221,124,18,0.15)',
+                          } as CSSProperties
+                        }
                         placeholder="Digite seu usuário"
                       />
 
@@ -362,7 +400,11 @@ export default function LoginPage() {
                         onChange={(event) => setPassword(event.target.value)}
                         autoComplete="current-password"
                         className="h-14 w-full rounded-2xl border border-border bg-background/70 pl-12 pr-12 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:ring-4"
-                        style={{ '--tw-ring-color': 'rgba(221,124,18,0.15)' } as CSSProperties}
+                        style={
+                          {
+                            '--tw-ring-color': 'rgba(221,124,18,0.15)',
+                          } as CSSProperties
+                        }
                         placeholder="Digite sua senha"
                       />
 
