@@ -32,7 +32,7 @@ export default function HomePage() {
 
     async function resolveHomeRedirect() {
       try {
-        const result = await withTimeout(me(), 5000)
+        const result = await withTimeout(me(), 1800)
 
         if (!isMounted) return
 
