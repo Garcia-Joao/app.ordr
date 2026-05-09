@@ -6,6 +6,24 @@ import { useRouter } from 'next/navigation'
 import { me } from '@/lib/api/auth'
 import { getFirstAllowedPath } from '@/lib/auth-routing'
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error('REQUEST_TIMEOUT'))
+    }, timeoutMs)
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timeout)
+        resolve(value)
+      })
+      .catch((error) => {
+        window.clearTimeout(timeout)
+        reject(error)
+      })
+  })
+}
+
 export default function HomePage() {
   const router = useRouter()
 
@@ -14,7 +32,7 @@ export default function HomePage() {
 
     async function resolveHomeRedirect() {
       try {
-        const result = await me()
+        const result = await withTimeout(me(), 5000)
 
         if (!isMounted) return
 
@@ -28,7 +46,7 @@ export default function HomePage() {
         localStorage.removeItem('ordr-user')
         window.dispatchEvent(new Event('ordr-user-updated'))
 
-        router.replace('/login')
+        router.replace('/login/')
       }
     }
 

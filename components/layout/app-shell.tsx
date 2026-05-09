@@ -21,11 +21,23 @@ type ShellUser = {
   role?: string | null
 }
 
+function normalizePathname(pathname: string | null) {
+  if (!pathname) return '/'
+
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    return pathname.slice(0, -1)
+  }
+
+  return pathname
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
 
-  const isPublicRoute = pathname === '/' || pathname === '/login'
+  const normalizedPathname = normalizePathname(pathname)
+  const isPublicRoute =
+    normalizedPathname === '/' || normalizedPathname === '/login'
 
   const [currentUser, setCurrentUser] = useState<ShellUser | null>(null)
   const [time, setTime] = useState<Date | null>(null)
@@ -36,7 +48,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isSavingAccount, setIsSavingAccount] = useState(false)
 
   useEffect(() => {
-    if (isPublicRoute) return
+    if (isPublicRoute) {
+      setIsCheckingSession(false)
+      return
+    }
 
     setTime(new Date())
 
@@ -96,7 +111,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         localStorage.removeItem('ordr-user')
         window.dispatchEvent(new Event('ordr-user-updated'))
-        router.replace('/login')
+        router.replace('/login/')
       } finally {
         if (isMounted) {
           setIsCheckingSession(false)
@@ -121,7 +136,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       window.dispatchEvent(new Event('ordr-user-updated'))
 
       setCurrentUser(null)
-      window.location.href = '/login'
+      window.location.href = '/login/'
     } catch (error) {
       console.error('Erro ao deslogar:', error)
     } finally {
@@ -166,25 +181,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   const pageTitle = useMemo(() => {
-    if (pathname === '/') return 'Ordr'
-    if (pathname.startsWith('/PDV')) return 'Ponto de Venda'
-    if (pathname.startsWith('/interno')) return 'PDV Interno'
-    if (pathname.startsWith('/pedidos')) return 'Pedidos'
-    if (pathname.startsWith('/produtos')) return 'Produtos'
-    if (pathname.startsWith('/clientes')) return 'Clientes'
-    if (pathname.startsWith('/relatorios')) return 'Relatórios'
-    if (pathname.startsWith('/dispositivos')) return 'Dispositivos'
-    if (pathname.startsWith('/configuracoes')) return 'Configurações'
-    if (pathname.startsWith('/estoque')) return 'Estoque'
-    if (pathname.startsWith('/pessoas')) return 'Pessoas'
-    if (pathname.startsWith('/eventos')) return 'Eventos'
-    if (pathname.startsWith('/compras')) return 'Compras'
-    if (pathname.startsWith('/acessos')) return 'Acessos'
-    if (pathname.startsWith('/auditoria')) return 'Auditoria'
-    if (pathname.startsWith('/impressoras')) return 'Impressoras'
+    if (normalizedPathname === '/') return 'Ordr'
+    if (normalizedPathname.startsWith('/PDV')) return 'Ponto de Venda'
+    if (normalizedPathname.startsWith('/interno')) return 'PDV Interno'
+    if (normalizedPathname.startsWith('/pedidos')) return 'Pedidos'
+    if (normalizedPathname.startsWith('/produtos')) return 'Produtos'
+    if (normalizedPathname.startsWith('/clientes')) return 'Clientes'
+    if (normalizedPathname.startsWith('/relatorios')) return 'Relatórios'
+    if (normalizedPathname.startsWith('/dispositivos')) return 'Dispositivos'
+    if (normalizedPathname.startsWith('/configuracoes')) return 'Configurações'
+    if (normalizedPathname.startsWith('/estoque')) return 'Estoque'
+    if (normalizedPathname.startsWith('/pessoas')) return 'Pessoas'
+    if (normalizedPathname.startsWith('/eventos')) return 'Eventos'
+    if (normalizedPathname.startsWith('/compras')) return 'Compras'
+    if (normalizedPathname.startsWith('/acessos')) return 'Acessos'
+    if (normalizedPathname.startsWith('/auditoria')) return 'Auditoria'
+    if (normalizedPathname.startsWith('/impressoras')) return 'Impressoras'
 
     return 'Ordr'
-  }, [pathname])
+  }, [normalizedPathname])
 
   const editInitialData = useMemo<EditableAccountData>(() => {
     return {
