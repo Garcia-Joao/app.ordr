@@ -92,66 +92,28 @@ function getTerminalUserLabel(terminal?: PrintTerminal | null) {
   return terminal.currentUser?.name || terminal.currentUser?.username || '—'
 }
 
-function getPortTerminal(port: PrintPort, onlineTerminals: PrintTerminal[]) {
-  if (!port.terminalDeviceId) return null
-  return onlineTerminals.find((terminal) => terminal.id === port.terminalDeviceId) ?? null
-}
-
-function getPortStatus(port: PrintPort, onlineTerminals: PrintTerminal[]) {
+function getPortStatus(port: PrintPort) {
   if (!port.active) {
-    return {
-      label: 'Inativa',
-      tone: 'neutral' as const,
-      description: 'Esta port está cadastrada, mas marcada como inativa.',
-      icon: Unplug,
-    }
+    return { label: 'Inativa', tone: 'warning' as const, description: 'Esta port está cadastrada, mas marcada como inativa.', icon: Unplug }
   }
 
-  if (!port.terminalDeviceId) {
-    return {
-      label: 'Livre',
-      tone: 'neutral' as const,
-      description: 'Ainda não foi vinculada a nenhum terminal.',
-      icon: Settings2,
-    }
+  const bindingCount = port.bindings?.length ?? 0
+
+  if (bindingCount === 0) {
+    return { label: 'Livre', tone: 'neutral' as const, description: 'Port lógica criada. Vincule impressoras pelo ORDR Terminal.', icon: Settings2 }
   }
 
-  const onlineTerminal = getPortTerminal(port, onlineTerminals)
-
-  if (!onlineTerminal) {
-    return {
-      label: 'Terminal offline',
-      tone: 'warning' as const,
-      description: 'Está vinculada, mas o terminal responsável não está online agora.',
-      icon: AlertTriangle,
-    }
-  }
-
-  if (!port.localPrinterName) {
-    return {
-      label: 'Sem impressora',
-      tone: 'warning' as const,
-      description: 'O terminal está online, mas ainda não escolheu uma impressora local.',
-      icon: AlertTriangle,
-    }
-  }
-
-  return {
-    label: 'Vinculada',
-    tone: 'success' as const,
-    description: `Impressora local: ${port.localPrinterLabel || port.localPrinterName}`,
-    icon: CheckCircle,
-  }
+  return { label: `${bindingCount} vínculo(s)`, tone: 'success' as const, description: 'Esta port possui impressora(s) vinculada(s) no ORDR Terminal.', icon: CheckCircle }
 }
 
-function getPortStats(ports: PrintPort[], onlineTerminals: PrintTerminal[]) {
+function getPortStats(ports: PrintPort[]) {
   return ports.reduce(
     (acc, port) => {
-      const status = getPortStatus(port, onlineTerminals)
+      const status = getPortStatus(port)
       acc.total += 1
       if (status.tone === 'success') acc.bound += 1
       if (status.tone === 'warning') acc.warning += 1
-      if (!port.terminalDeviceId) acc.free += 1
+      if ((port.bindings?.length ?? 0) === 0) acc.free += 1
       return acc
     },
     { total: 0, bound: 0, warning: 0, free: 0 }
@@ -171,7 +133,7 @@ export default function ImpressorasPage() {
 
   const onlineTerminals = useMemo(() => getLatestOnlineTerminals(terminals), [terminals])
   const hasOnlineTerminal = onlineTerminals.length > 0
-  const portStats = useMemo(() => getPortStats(ports, onlineTerminals), [ports, onlineTerminals])
+  const portStats = useMemo(() => getPortStats(ports), [ports])
 
   async function loadData(options?: { silent?: boolean }) {
     try {
@@ -285,7 +247,7 @@ export default function ImpressorasPage() {
             <p className="text-xs font-black uppercase tracking-[0.22em] text-primary">ORDR Print</p>
             <h1 className="text-2xl font-black tracking-tight text-foreground">Impressoras</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Cadastre ports lógicas no app. O vínculo com impressoras físicas é feito somente no ORDR Terminal.
+              Cadastre ports lógicas no app. O vínculo com impressoras físicas é feito no ORDR Terminal.
             </p>
           </div>
         </div>
@@ -462,8 +424,7 @@ export default function ImpressorasPage() {
             ) : (
               <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
                 {ports.map((port) => {
-                  const status = getPortStatus(port, onlineTerminals)
-                  const terminal = getPortTerminal(port, onlineTerminals)
+                  const status = getPortStatus(port)
                   const StatusIcon = status.icon
 
                   return (
@@ -485,8 +446,11 @@ export default function ImpressorasPage() {
                       <div className="mt-4 rounded-2xl border border-border bg-card px-3 py-3">
                         <p className="text-sm font-semibold text-foreground">{status.description}</p>
                         <div className="mt-3 grid gap-2 text-xs">
-                          <InfoLine label="Terminal" value={terminal?.name || (port.terminalDeviceId ? 'Offline ou antigo' : '—')} />
-                          <InfoLine label="Impressora" value={port.localPrinterLabel || port.localPrinterName || '—'} />
+                          <InfoLine label="Tipo" value="Port lógica" />
+                          <InfoLine
+                            label="Vínculos"
+                            value={(port.bindings?.length ?? 0) > 0 ? `${port.bindings?.length ?? 0} impressora(s)` : 'Configurado no Terminal'}
+                          />
                         </div>
                       </div>
 

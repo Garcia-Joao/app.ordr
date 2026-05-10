@@ -30,6 +30,14 @@ export type PrintTerminal = {
   } | null
 }
 
+export type PrintPortBinding = {
+  id: string
+  portId: string
+  terminalDeviceId: string
+  localPrinterName: string
+  localPrinterLabel?: string | null
+}
+
 export type PrintPort = {
   id: string
   companyId?: string
@@ -44,6 +52,7 @@ export type PrintPort = {
   createdAt?: string
   updatedAt?: string
   terminalDevice?: PrintTerminal | null
+  bindings?: PrintPortBinding[]
 }
 
 export type PrintPortInput = {
@@ -88,6 +97,16 @@ export function updatePrintPort(portId: string, data: PrintPortInput) {
 
 export function bindPrintPort(portId: string, data: PrintPortInput) {
   return apiFetch<{ port: PrintPort }>(`/printers/ports/${portId}/binding`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export function setPrintPortBindings(portId: string, data: {
+  terminalDeviceId: string
+  printers: Array<{ localPrinterName: string; localPrinterLabel?: string | null }>
+}) {
+  return apiFetch<{ port: PrintPort }>(`/printers/ports/${portId}/bindings`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   })
