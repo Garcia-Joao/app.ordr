@@ -13,13 +13,11 @@ import {
   X,
 } from 'lucide-react'
 import {
-  bindPrintPort,
   createPrintPort,
   deletePrintPort,
   listPrintPorts,
   listPrintTerminals,
   updatePrintPort,
-  type LocalPrinter,
   type PrintPort,
   type PrintTerminal,
 } from '@/lib/api/printers'
@@ -39,10 +37,6 @@ function formatDateTime(value?: string | null) {
 
 function openTerminal() {
   window.location.href = 'ordr://terminal'
-}
-
-function getPrinterLabel(printer: LocalPrinter) {
-  return printer.displayName || printer.name
 }
 
 export default function ImpressorasPage() {
@@ -71,7 +65,7 @@ export default function ImpressorasPage() {
       setTerminals(terminalsResult.terminals)
     } catch (err) {
       console.error(err)
-      setError('Não foi possível carregar impressoras e terminais.')
+      setError('Não foi possível carregar ports e terminais.')
     } finally {
       setIsLoading(false)
     }
@@ -126,32 +120,6 @@ export default function ImpressorasPage() {
     }
   }
 
-  async function handleBindPort(port: PrintPort, terminalDeviceId: string, localPrinterName: string) {
-    try {
-      setIsSaving(true)
-      setError(null)
-      setMessage(null)
-
-      const terminal = terminals.find((item) => item.id === terminalDeviceId)
-      const printer = terminal?.localPrinters?.find((item) => item.name === localPrinterName)
-
-      await bindPrintPort(port.id, {
-        terminalDeviceId: terminalDeviceId || null,
-        localPrinterName: localPrinterName || null,
-        localPrinterLabel: printer ? getPrinterLabel(printer) : localPrinterName || null,
-        paperWidth: port.paperWidth ?? 80,
-      })
-
-      setMessage('Vínculo da port atualizado.')
-      await loadData()
-    } catch (err) {
-      console.error(err)
-      setError(err instanceof Error ? err.message : 'Não foi possível vincular a impressora.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   async function handleDeletePort(portId: string) {
     const confirmed = window.confirm('Remover esta port? Categorias e produtos ligados a ela voltarão a ficar sem port configurada.')
     if (!confirmed) return
@@ -171,7 +139,7 @@ export default function ImpressorasPage() {
     }
   }
 
-  const blockingMessage = isLoading ? 'Carregando impressoras...' : isSaving ? 'Salvando...' : null
+  const blockingMessage = isLoading ? 'Carregando ports...' : isSaving ? 'Salvando...' : null
 
   return (
     <div className="h-full flex flex-col overflow-hidden relative" aria-busy={Boolean(blockingMessage)}>
@@ -181,7 +149,7 @@ export default function ImpressorasPage() {
           <div>
             <h1 className="text-xl font-semibold text-foreground">Impressoras</h1>
             <p className="text-sm text-muted-foreground">
-              Configure ports lógicas e vincule cada port a uma impressora local do terminal Electron.
+              Cadastre ports lógicas. O vínculo com impressoras físicas é feito no ORDR Terminal.
             </p>
           </div>
         </div>
@@ -242,84 +210,42 @@ export default function ImpressorasPage() {
                 <div className="p-10 flex flex-col items-center justify-center text-center text-muted-foreground">
                   <Printer className="h-12 w-12 mb-3 opacity-50" />
                   <p className="text-base font-medium">Nenhuma port cadastrada</p>
-                  <p className="text-sm">Crie Port 1, Port 2 etc. e vincule cada uma a uma impressora local.</p>
+                  <p className="text-sm">Crie Port 1, Port 2, Cozinha, Bar etc. Depois vincule no Terminal.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {ports.map((port) => {
-                    const selectedTerminal = terminals.find((terminal) => terminal.id === port.terminalDeviceId)
-                    const localPrinters = selectedTerminal?.localPrinters ?? []
-
-                    return (
-                      <div key={port.id} className="px-5 py-4 space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-foreground truncate">{port.name}</h3>
-                              <span className={`text-xs rounded-full px-2 py-0.5 ${port.active ? 'bg-green-500/10 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-                                {port.active ? 'Ativa' : 'Inativa'}
-                              </span>
-                              {selectedTerminal && (
-                                <span className={`text-xs rounded-full px-2 py-0.5 ${selectedTerminal.status === 'online' ? 'bg-primary/10 text-primary' : 'bg-red-500/10 text-red-600'}`}>
-                                  Terminal {selectedTerminal.status === 'online' ? 'online' : 'offline'}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {port.description || 'Sem descrição'}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Impressora: {port.localPrinterLabel || port.localPrinterName || 'não vinculada'}
-                            </p>
+                  {ports.map((port) => (
+                    <div key={port.id} className="px-5 py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-foreground truncate">{port.name}</h3>
+                            <span className={`text-xs rounded-full px-2 py-0.5 ${port.active ? 'bg-green-500/10 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                              {port.active ? 'Ativa' : 'Inativa'}
+                            </span>
                           </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={() => handleEditPort(port)} className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-accent">
-                              Editar
-                            </button>
-                            <button onClick={() => handleDeletePort(port.id)} className="p-2 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-500/10">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {port.description || 'Sem descrição'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Impressora física: {port.localPrinterLabel || port.localPrinterName || 'não vinculada'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            O vínculo desta port com terminal/impressora local é configurado no ORDR Terminal.
+                          </p>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 rounded-lg border border-border bg-background/50 p-3">
-                          <label className="grid gap-1 text-sm">
-                            <span className="font-medium text-foreground">Terminal</span>
-                            <select
-                              value={port.terminalDeviceId ?? ''}
-                              onChange={(event) => handleBindPort(port, event.target.value, '')}
-                              className="h-10 px-3 rounded-lg border border-border bg-background text-sm"
-                            >
-                              <option value="">Sem terminal</option>
-                              {terminals.map((terminal) => (
-                                <option key={terminal.id} value={terminal.id}>
-                                  {terminal.name} · {terminal.status === 'online' ? 'online' : 'offline'}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <label className="grid gap-1 text-sm">
-                            <span className="font-medium text-foreground">Impressora local</span>
-                            <select
-                              value={port.localPrinterName ?? ''}
-                              disabled={!selectedTerminal}
-                              onChange={(event) => handleBindPort(port, port.terminalDeviceId ?? '', event.target.value)}
-                              className="h-10 px-3 rounded-lg border border-border bg-background text-sm disabled:opacity-50"
-                            >
-                              <option value="">Sem impressora</option>
-                              {localPrinters.map((printer) => (
-                                <option key={printer.name} value={printer.name}>
-                                  {getPrinterLabel(printer)}{printer.isDefault ? ' · padrão' : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button onClick={() => handleEditPort(port)} className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-accent">
+                            Editar
+                          </button>
+                          <button onClick={() => handleDeletePort(port.id)} className="p-2 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-500/10">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
-                    )
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -330,7 +256,7 @@ export default function ImpressorasPage() {
                   <div>
                     <h2 className="text-lg font-semibold text-foreground">Terminal conectado</h2>
                     <p className="text-sm text-muted-foreground">
-                      Apenas o Electron Terminal consegue acessar impressoras locais.
+                      Apenas o Electron Terminal consegue acessar impressoras locais e vincular ports.
                     </p>
                   </div>
                   <span className="text-sm rounded-full bg-primary/10 text-primary px-3 py-1">
@@ -372,9 +298,9 @@ export default function ImpressorasPage() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <h2 className="text-lg font-semibold text-foreground">Como usar</h2>
                 <ol className="mt-3 space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                  <li>Crie ports lógicas nesta tela: Port 1, Port 2, Cozinha, Bar etc.</li>
                   <li>Abra o Electron Terminal no computador conectado às impressoras.</li>
-                  <li>Crie ports lógicas: Port 1, Port 2, Cozinha, Bar etc.</li>
-                  <li>Vincule cada port a uma impressora local listada pelo terminal.</li>
+                  <li>No Terminal, vincule cada port cadastrada a uma impressora local encontrada.</li>
                   <li>Nas categorias/produtos, escolha a port de destino.</li>
                 </ol>
               </div>
@@ -446,7 +372,7 @@ function PortModal({
           <div>
             <h2 className="text-lg font-semibold">{port ? 'Editar port' : 'Nova port'}</h2>
             <p className="text-sm text-muted-foreground">
-              Cadastre apenas a port lógica. O vínculo com terminal e impressora local é feito na lista de ports.
+              Cadastre apenas a port lógica. O vínculo com a impressora física é feito no ORDR Terminal.
             </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-accent" type="button">
@@ -487,7 +413,7 @@ function PortModal({
           </label>
 
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-3 text-sm text-muted-foreground">
-            Depois de salvar, selecione na lista qual terminal Electron e qual impressora local esta port deve usar.
+            Depois de salvar, abra o ORDR Terminal para escolher qual impressora local atende esta port.
           </div>
 
           <div className="flex justify-end gap-2 pt-3">
