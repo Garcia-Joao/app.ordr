@@ -3,6 +3,13 @@ import { apiFetch } from './client'
 export type DeviceType = 'DESKTOP' | 'MOBILE' | 'TABLET' | 'UNKNOWN'
 export type DeviceStatus = 'online' | 'offline'
 
+export type LocalPrinterInfo = {
+  name: string
+  displayName?: string | null
+  description?: string | null
+  isDefault?: boolean | null
+}
+
 export type CompanyDevice = {
   id: string
   name: string
@@ -23,22 +30,15 @@ export type CompanyDevice = {
   isPrintTerminal?: boolean
   printTerminalEnabled?: boolean
   terminalApprovedAt?: string | null
-  localPrinters?: Array<{ name: string; displayName?: string | null; description?: string | null; isDefault?: boolean | null }>
+  localPrinters?: LocalPrinterInfo[]
   salesCount: number
   totalSales: number
 }
 
-export type LocalPrinterInfo = {
-  name: string
-  displayName?: string | null
-  description?: string | null
-  isDefault?: boolean | null
-}
-
 export type DeviceHeartbeatInput = {
   deviceId?: string | null
-  name?: string | null
-  type?: DeviceType | string | null
+  name: string
+  type: DeviceType
   browser?: string | null
   os?: string | null
   userAgent?: string | null
