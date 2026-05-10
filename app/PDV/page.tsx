@@ -288,7 +288,7 @@ export default function POSPage() {
 
       for (const item of currentOrderItems) {
         const key = getItemKey(item)
-        if (current[key] && item.quantity > 1) {
+        if (current[key]) {
           next[key] = current[key]
         }
       }
@@ -791,21 +791,6 @@ export default function POSPage() {
         </div>
 
         <div className="hidden lg:flex lg:flex-col">
-          <PrintItemModePanel
-            items={currentOrderItems}
-            modes={printItemModes}
-            disabled={isSubmittingOrder}
-            onChange={(itemKey, mode) =>
-              setPrintItemModes((current) => ({ ...current, [itemKey]: mode }))
-            }
-            onSetAll={(mode) => {
-              const next: Record<string, PrintItemMode> = {}
-              for (const item of currentOrderItems) {
-                if (item.quantity > 1) next[getItemKey(item)] = mode
-              }
-              setPrintItemModes(next)
-            }}
-          />
 
           <OrderPanel
             items={currentOrderItems}
@@ -825,6 +810,10 @@ export default function POSPage() {
             onSetOrderObservation={setCurrentOrderObservation}
             onSetItemNotes={handleSetItemNotes}
             onSetApplyTax={setApplyTax}
+            printItemModes={printItemModes}
+            onSetItemPrintMode={(itemKey, mode) =>
+              setPrintItemModes((current) => ({ ...current, [itemKey]: mode }))
+            }
             isLoading={isSubmittingOrder}
           />
         </div>
@@ -871,21 +860,6 @@ export default function POSPage() {
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden">
-              <PrintItemModePanel
-                items={currentOrderItems}
-                modes={printItemModes}
-                disabled={isSubmittingOrder}
-                onChange={(itemKey, mode) =>
-                  setPrintItemModes((current) => ({ ...current, [itemKey]: mode }))
-                }
-                onSetAll={(mode) => {
-                  const next: Record<string, PrintItemMode> = {}
-                  for (const item of currentOrderItems) {
-                    if (item.quantity > 1) next[getItemKey(item)] = mode
-                  }
-                  setPrintItemModes(next)
-                }}
-              />
 
               <OrderPanel
                 items={currentOrderItems}
@@ -905,6 +879,10 @@ export default function POSPage() {
                 onSetOrderObservation={setCurrentOrderObservation}
                 onSetItemNotes={handleSetItemNotes}
                 onSetApplyTax={setApplyTax}
+                printItemModes={printItemModes}
+                onSetItemPrintMode={(itemKey, mode) =>
+                  setPrintItemModes((current) => ({ ...current, [itemKey]: mode }))
+                }
                 isLoading={isSubmittingOrder}
               />
             </div>
@@ -919,109 +897,6 @@ export default function POSPage() {
           onPrint={handlePrint}
         />
       )}
-    </div>
-  )
-}
-
-function PrintItemModePanel({
-  items,
-  modes,
-  disabled,
-  onChange,
-  onSetAll,
-}: {
-  items: OrderItem[]
-  modes: Record<string, PrintItemMode>
-  disabled: boolean
-  onChange: (itemKey: string, mode: PrintItemMode) => void
-  onSetAll: (mode: PrintItemMode) => void
-}) {
-  const eligibleItems = items.filter((item) => item.quantity > 1)
-
-  if (eligibleItems.length === 0) return null
-
-  return (
-    <div className="border-b border-border bg-card/95 px-3 py-2">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            Tickets
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            Itens repetidos imprimem separados por padrão.
-          </p>
-        </div>
-
-        <div className="flex shrink-0 rounded-lg border border-border bg-background p-0.5">
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => onSetAll('SEPARATE')}
-            className="rounded-md px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
-            title="Imprimir uma comanda para cada unidade"
-          >
-            Separar
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => onSetAll('GROUPED')}
-            className="rounded-md px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
-            title="Imprimir uma comanda agrupada por item"
-          >
-            Agrupar
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        {eligibleItems.map((item) => {
-          const itemKey = getItemKey(item)
-          const currentMode = modes[itemKey] ?? 'SEPARATE'
-
-          return (
-            <div
-              key={itemKey}
-              className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/70 px-2 py-1.5"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-foreground">
-                  {item.quantity}x {item.product.name}
-                </p>
-              </div>
-
-              <div className="flex shrink-0 rounded-md border border-border bg-card p-0.5">
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onChange(itemKey, 'SEPARATE')}
-                  className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
-                    currentMode === 'SEPARATE'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                  }`}
-                  title="Uma comanda por unidade"
-                >
-                  1/1
-                </button>
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onChange(itemKey, 'GROUPED')}
-                  className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
-                    currentMode === 'GROUPED'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                  }`}
-                  title="Uma comanda agrupada"
-                >
-                  x{item.quantity}
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }

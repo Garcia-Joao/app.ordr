@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button'
 import type { OrderItem, PaymentMethod } from '@/lib/pos-types'
 import { formatBRL, getItemPrice } from '@/lib/pos-types'
 
+type PrintItemMode = 'SEPARATE' | 'GROUPED'
+
 type OrderPanelProps = {
   items: OrderItem[]
   orderId: string | null
@@ -35,6 +37,8 @@ type OrderPanelProps = {
   onSetOrderObservation: (value: string) => void
   onSetItemNotes: (itemKey: string, notes: string) => void
   onSetApplyTax: (value: boolean) => void
+  printItemModes?: Record<string, PrintItemMode>
+  onSetItemPrintMode?: (itemKey: string, mode: PrintItemMode) => void
   isLoading?: boolean
 }
 
@@ -88,6 +92,8 @@ export function OrderPanel({
   onSetOrderObservation,
   onSetItemNotes,
   onSetApplyTax,
+  printItemModes = {},
+  onSetItemPrintMode,
   isLoading = false,
 }: OrderPanelProps) {
   const [isOrderObservationOpen, setIsOrderObservationOpen] = useState(false)
@@ -240,11 +246,12 @@ export function OrderPanel({
                 return (
                   <div
                     key={itemKey}
-                    className="flex items-center gap-3 p-3 bg-secondary rounded-lg"
+                    className="bg-secondary rounded-lg p-3"
                   >
-                    <span className="text-2xl">{item.product.emoji}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{item.product.emoji}</span>
 
-                    <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
                           {item.product.name}
@@ -316,6 +323,43 @@ export function OrderPanel({
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                    </div>
+                  </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-background/60 px-2 py-1.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Impressão
+                      </span>
+
+                      <div className="flex shrink-0 rounded-md border border-border bg-card p-0.5">
+                        <button
+                          type="button"
+                          disabled={isLoading || !onSetItemPrintMode}
+                          onClick={() => onSetItemPrintMode?.(itemKey, 'SEPARATE')}
+                          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+                            (printItemModes[itemKey] ?? 'SEPARATE') === 'SEPARATE'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                          }`}
+                          title="Uma comanda por unidade deste item"
+                        >
+                          Separado
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isLoading || !onSetItemPrintMode}
+                          onClick={() => onSetItemPrintMode?.(itemKey, 'GROUPED')}
+                          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+                            (printItemModes[itemKey] ?? 'SEPARATE') === 'GROUPED'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                          }`}
+                          title="Agrupar este item em uma comanda junto com os outros itens agrupados"
+                        >
+                          Agrupado
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )
