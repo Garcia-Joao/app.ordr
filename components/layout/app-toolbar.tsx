@@ -15,6 +15,8 @@ import {
   CalendarDays,
   ShoppingCart,
   Trash2,
+  Building2,
+  FlaskConical,
 } from 'lucide-react'
 import {
   createStockMovement,
@@ -223,6 +225,16 @@ export function AppToolbar({
       getActiveEventDate()
     )
   }, [currentEvents, activeEventDateId, hasMounted, canUseEvents])
+
+  const currentCompany = useMemo(() => {
+    if (!authUser?.companies?.length) return null
+
+    return (
+      authUser.companies.find((company) => company.id === authUser.companyId) ??
+      authUser.companies[0] ??
+      null
+    )
+  }, [authUser])
 
   function formatEventDateTimeRange(eventDate: EventDate) {
     const start = new Date(eventDate.startAt)
@@ -754,6 +766,31 @@ export function AppToolbar({
               }) || '--:--'}
             </span>
           </div>
+
+          {currentCompany && (
+            <div
+              className="hidden min-w-0 max-w-[230px] items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-foreground lg:flex"
+              title={currentCompany.isTest ? `${currentCompany.name} • empresa teste` : currentCompany.name}
+            >
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${currentCompany.isTest ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'}`}>
+                {currentCompany.isTest ? (
+                  <FlaskConical className="h-3.5 w-3.5" />
+                ) : (
+                  <Building2 className="h-3.5 w-3.5" />
+                )}
+              </span>
+
+              <span className="min-w-0 truncate text-sm font-semibold">
+                {currentCompany.name}
+              </span>
+
+              {currentCompany.isTest && (
+                <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-600">
+                  Teste
+                </span>
+              )}
+            </div>
+          )}
 
           {accountContent ? (
             accountContent
