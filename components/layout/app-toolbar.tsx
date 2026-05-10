@@ -17,6 +17,8 @@ import {
   Trash2,
   Building2,
   FlaskConical,
+  BadgeCheck,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   createStockMovement,
@@ -789,6 +791,18 @@ export function AppToolbar({
                   Teste
                 </span>
               )}
+
+              {currentCompany.licenseActive === false ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-destructive">
+                  <AlertTriangle className="h-3 w-3" />
+                  Licença
+                </span>
+              ) : currentCompany.licenseActive === true ? (
+                <span className="hidden shrink-0 items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-green-600 xl:flex">
+                  <BadgeCheck className="h-3 w-3" />
+                  Ativa
+                </span>
+              ) : null}
             </div>
           )}
 

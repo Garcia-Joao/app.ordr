@@ -11,6 +11,16 @@ export type AuthCompany = {
   customRoleName?: string | null
   activeEventDateId?: string | null
   permissions?: string[]
+  licenseActive?: boolean
+  licenseStatus?: string
+  licensePlanName?: string | null
+  licenseStartsAt?: string | null
+  licenseEndsAt?: string | null
+  licenseDaysRemaining?: number | null
+  platformAccessStatus?: string
+  platformBlockedReason?: string | null
+  licenseSourceCompanyId?: string | null
+  licenseSourceCompanyName?: string | null
 }
 
 export type AuthUser = {
@@ -23,6 +33,7 @@ export type AuthUser = {
   activeEventDateId?: string | null
   permissions?: string[]
   companyId: string
+  currentCompany?: AuthCompany | null
   companies?: AuthCompany[]
   name?: string | null
   phone?: string | null

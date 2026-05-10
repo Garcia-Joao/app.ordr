@@ -15,6 +15,10 @@ import {
   MapPinned,
   Copy,
   ShieldCheck,
+  BadgeCheck,
+  AlertTriangle,
+  CalendarClock,
+  KeyRound,
 } from 'lucide-react'
 import { getMe, switchCompany, type AuthCompany, type AuthUser } from '@/lib/api/auth'
 import { createTestCompany, deleteTestCompany } from '@/lib/api/companies'
@@ -45,6 +49,29 @@ function sortCompanies(companies: AuthCompany[]) {
 
 function isCompanyAdmin(company: AuthCompany) {
   return company.systemRole === 'ADMIN' || company.role === 'admin'
+}
+
+function formatLicenseDate(value?: string | null) {
+  if (!value) return 'Sem vencimento definido'
+
+  return new Date(value).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+function getLicenseStatusLabel(company?: AuthCompany | null) {
+  if (!company) return 'Indefinida'
+  if (company.licenseActive) return 'Ativa'
+
+  if (company.platformAccessStatus === 'SUSPENDED') return 'Suspensa'
+  if (company.platformAccessStatus === 'BLOCKED') return 'Bloqueada'
+  if (company.platformAccessStatus === 'CANCELLED') return 'Cancelada'
+  if (company.licenseStatus === 'EXPIRED') return 'Expirada'
+  if (company.licenseStatus === 'CANCELLED') return 'Cancelada'
+
+  return 'Inativa'
 }
 
 export default function ConfiguracoesPage() {
@@ -250,6 +277,11 @@ export default function ConfiguracoesPage() {
         return
       }
 
+      if (targetCompany?.licenseActive === false) {
+        alert('A licença desta empresa não está ativa. O acesso está bloqueado.')
+        return
+      }
+
       if (selectedCompanyId && selectedCompanyId !== user?.companyId) {
         const result = await switchCompany(selectedCompanyId)
         const sortedCompanies = sortCompanies(result.user.companies ?? [])
@@ -394,7 +426,9 @@ export default function ConfiguracoesPage() {
                 const isSelected = company.id === selectedCompanyId
                 const isCurrent = user?.companyId === company.id
                 const isDeleting = deletingTestCompanyId === company.id
+                const hasActiveLicense = company.licenseActive !== false
                 const canEnterTestCompany = !company.isTest || isCompanyAdmin(company)
+                const canSelectCompany = canEnterTestCompany && hasActiveLicense
                 const canDeleteTestCompany = company.isTest && isCompanyAdmin(company)
 
                 return (
@@ -404,7 +438,7 @@ export default function ConfiguracoesPage() {
                       isSelected
                         ? 'border-primary bg-primary/5'
                         : 'border-border bg-secondary/30 hover:bg-secondary/50'
-                    } ${!canEnterTestCompany ? 'opacity-60' : ''}`}
+                    } ${!canSelectCompany ? 'opacity-60' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <label className="flex items-start gap-4 cursor-pointer flex-1 min-w-0">
@@ -413,7 +447,7 @@ export default function ConfiguracoesPage() {
                           name="active-company"
                           value={company.id}
                           checked={isSelected}
-                          disabled={!canEnterTestCompany}
+                          disabled={!canSelectCompany}
                           onChange={() => setSelectedCompanyId(company.id)}
                           className="h-4 w-4 mt-1"
                         />
@@ -437,6 +471,15 @@ export default function ConfiguracoesPage() {
                                 Admin
                               </span>
                             )}
+
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${company.licenseActive ? 'bg-green-500/10 text-green-600' : 'bg-destructive/10 text-destructive'}`}>
+                              {company.licenseActive ? (
+                                <BadgeCheck className="h-3.5 w-3.5" />
+                              ) : (
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                              )}
+                              {getLicenseStatusLabel(company)}
+                            </span>
                           </div>
 
                           <p className="text-sm text-muted-foreground mt-1">
@@ -449,6 +492,12 @@ export default function ConfiguracoesPage() {
                           {company.isTest && !canEnterTestCompany && (
                             <p className="text-xs text-warning mt-2">
                               Somente administradores podem entrar em empresas de teste.
+                            </p>
+                          )}
+
+                          {!hasActiveLicense && (
+                            <p className="text-xs text-destructive mt-2">
+                              Esta empresa está com a licença inativa. O acesso fica bloqueado até a regularização.
                             </p>
                           )}
                         </div>
@@ -482,6 +531,77 @@ export default function ConfiguracoesPage() {
                 )
               })}
             </div>
+          </section>
+
+          <section className="bg-card rounded-xl border border-border p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-2 rounded-lg ${selectedCompany?.licenseActive ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
+                {selectedCompany?.licenseActive ? (
+                  <BadgeCheck className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Licença da empresa</h2>
+                <p className="text-sm text-muted-foreground">
+                  Consulte se a empresa selecionada está liberada para uso
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-border bg-secondary/20 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <KeyRound className="h-4 w-4 text-primary" />
+                  Status
+                </div>
+                <p className={`mt-2 text-lg font-bold ${selectedCompany?.licenseActive ? 'text-green-600' : 'text-destructive'}`}>
+                  {getLicenseStatusLabel(selectedCompany)}
+                </p>
+                {selectedCompany?.platformBlockedReason && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {selectedCompany.platformBlockedReason}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border bg-secondary/20 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <ClipboardList className="h-4 w-4 text-primary" />
+                  Plano
+                </div>
+                <p className="mt-2 text-lg font-bold text-foreground">
+                  {selectedCompany?.licensePlanName ?? 'Nenhum plano ativo'}
+                </p>
+                {selectedCompany?.isTest && selectedCompany.licenseSourceCompanyName && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Herdando licença de: {selectedCompany.licenseSourceCompanyName}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border bg-secondary/20 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <CalendarClock className="h-4 w-4 text-primary" />
+                  Vencimento
+                </div>
+                <p className="mt-2 text-lg font-bold text-foreground">
+                  {formatLicenseDate(selectedCompany?.licenseEndsAt)}
+                </p>
+                {typeof selectedCompany?.licenseDaysRemaining === 'number' && selectedCompany.licenseDaysRemaining > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {selectedCompany.licenseDaysRemaining} dia(s) restante(s)
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {!selectedCompany?.licenseActive && (
+              <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive">
+                Esta empresa está com acesso desativado. Regularize a licença no painel administrativo para liberar o uso do sistema.
+              </div>
+            )}
           </section>
 
           <section className="bg-card rounded-xl border border-border p-6">
