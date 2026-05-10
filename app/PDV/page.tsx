@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { CategoryTabs } from '@/components/pos/category-tabs'
 import { ProductGrid } from '@/components/pos/product-grid'
 import { OrderPanel } from '@/components/pos/order-panel'
@@ -193,7 +192,6 @@ function mergeProductsWithStockInfo(
 }
 
 export default function POSPage() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false)
   const [categories, setCategories] = useState<CategoryConfig[]>([])
@@ -320,15 +318,22 @@ export default function POSPage() {
 
         setOrders(normalizedOrders)
       } catch (error) {
-        console.error('Erro ao carregar dados:', error)
-        router.push('/login')
+        console.error('Erro ao carregar dados do PDV:', error)
+
+        // Do not redirect to /login for every PDV loading error.
+        // The AppShell already owns authentication redirects.
+        // Redirecting here causes a /PDV <-> /login loop when any POS-specific
+        // endpoint fails, for example products/categories/orders/stock after a deploy.
+        setProducts([])
+        setCategories([])
+        setOrders([])
       } finally {
         setIsLoading(false)
       }
     }
 
     loadPage()
-  }, [router])
+  }, [])
 
   useEffect(() => {
     return listenStockUpdated(async () => {
