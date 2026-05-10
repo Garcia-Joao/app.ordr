@@ -3,7 +3,8 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Sidebar } from './sidebar'
-import { logout, me, updateMe, type AuthCompany } from '@/lib/api'
+import { heartbeatDevice, logout, me, updateMe, type AuthCompany } from '@/lib/api'
+import { getDeviceHeartbeatPayload, setStoredDeviceId } from '@/lib/device-identity'
 import { AccountMenu } from './account-menu'
 import { AppToolbar } from './app-toolbar'
 import { MobileBottomNav } from './mobile-bottom-nav'
@@ -131,6 +132,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       isMounted = false
     }
   }, [isPublicRoute, router])
+
+useEffect(() => {
+  if (isPublicRoute || !currentCompany?.id || currentCompany.licenseActive === false) return
+
+  let cancelled = false
+
+  async function sendHeartbeat() {
+    if (!currentCompany?.id) return
+
+    try {
+      const payload = getDeviceHeartbeatPayload(currentCompany.id)
+      const result = await heartbeatDevice(payload)
+
+      if (!cancelled && result.device?.id) {
+        setStoredDeviceId(currentCompany.id, result.device.id)
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar dispositivo:', error)
+    }
+  }
+
+  sendHeartbeat()
+  const interval = window.setInterval(sendHeartbeat, 45_000)
+
+  return () => {
+    cancelled = true
+    window.clearInterval(interval)
+  }
+}, [currentCompany?.id, currentCompany?.licenseActive, isPublicRoute])
 
   const handleLogout = useCallback(async () => {
     try {

@@ -1,381 +1,321 @@
 'use client'
 
-import { useState } from 'react'
-import { Monitor, Plus, Trash2, CheckCircle, XCircle, Smartphone, Tablet, Power } from 'lucide-react'
-
-interface Device {
-  id: string
-  name: string
-  type: 'terminal' | 'tablet' | 'mobile'
-  serialNumber: string
-  status: 'online' | 'offline'
-  lastActivity?: Date
-  operator?: string
-  salesCount: number
-  totalSales: number
-}
-
-const SAMPLE_DEVICES: Device[] = [
-  {
-    id: '1',
-    name: 'Terminal 01',
-    type: 'terminal',
-    serialNumber: 'TRM-001-2024',
-    status: 'online',
-    lastActivity: new Date(),
-    operator: 'Carlos',
-    salesCount: 45,
-    totalSales: 2890,
-  },
-  {
-    id: '2',
-    name: 'Terminal 02',
-    type: 'terminal',
-    serialNumber: 'TRM-002-2024',
-    status: 'online',
-    lastActivity: new Date(Date.now() - 1000 * 60 * 2),
-    operator: 'Maria',
-    salesCount: 32,
-    totalSales: 1850,
-  },
-  {
-    id: '3',
-    name: 'Tablet Bar',
-    type: 'tablet',
-    serialNumber: 'TAB-001-2024',
-    status: 'online',
-    lastActivity: new Date(Date.now() - 1000 * 60 * 5),
-    operator: 'João',
-    salesCount: 28,
-    totalSales: 1420,
-  },
-  {
-    id: '4',
-    name: 'Mobile Garçom',
-    type: 'mobile',
-    serialNumber: 'MOB-001-2024',
-    status: 'offline',
-    salesCount: 0,
-    totalSales: 0,
-  },
-]
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  Activity,
+  CheckCircle,
+  Clock,
+  Laptop,
+  Monitor,
+  Power,
+  RefreshCw,
+  Smartphone,
+  Tablet,
+  Trash2,
+  UserRound,
+  WifiOff,
+  XCircle,
+} from 'lucide-react'
+import { deleteDevice, listDevices, type CompanyDevice, type DeviceType } from '@/lib/api/devices'
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '—'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function getRelativeLastSeen(value?: string | null) {
+  if (!value) return 'Sem atividade'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Sem atividade'
+
+  const diffMs = Date.now() - date.getTime()
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000))
+
+  if (diffMinutes < 1) return 'Agora mesmo'
+  if (diffMinutes === 1) return 'Há 1 minuto'
+  if (diffMinutes < 60) return `Há ${diffMinutes} minutos`
+
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours === 1) return 'Há 1 hora'
+  if (diffHours < 24) return `Há ${diffHours} horas`
+
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays === 1) return 'Há 1 dia'
+  return `Há ${diffDays} dias`
+}
+
+function getDeviceIcon(type: DeviceType) {
+  if (type === 'MOBILE') return Smartphone
+  if (type === 'TABLET') return Tablet
+  if (type === 'DESKTOP') return Monitor
+  return Laptop
+}
+
+function getDeviceTypeLabel(type: DeviceType) {
+  if (type === 'MOBILE') return 'Celular'
+  if (type === 'TABLET') return 'Tablet'
+  if (type === 'DESKTOP') return 'Desktop'
+  return 'Desconhecido'
+}
+
 export default function DispositivosPage() {
-  const [devices, setDevices] = useState<Device[]>(SAMPLE_DEVICES)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingDevice, setEditingDevice] = useState<Device | null>(null)
+  const [devices, setDevices] = useState<CompanyDevice[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleDeleteDevice = (deviceId: string) => {
-    setDevices((prev) => prev.filter((d) => d.id !== deviceId))
-  }
-
-  const handleAddNew = () => {
-    setEditingDevice(null)
-    setIsModalOpen(true)
-  }
-
-  const handleSaveDevice = (deviceData: Omit<Device, 'id' | 'status' | 'lastActivity' | 'salesCount' | 'totalSales'>) => {
-    if (editingDevice) {
-      setDevices((prev) =>
-        prev.map((d) =>
-          d.id === editingDevice.id
-            ? { ...d, ...deviceData }
-            : d
-        )
-      )
-    } else {
-      const newDevice: Device = {
-        ...deviceData,
-        id: Math.random().toString(36).substring(2, 9),
-        status: 'offline',
-        salesCount: 0,
-        totalSales: 0,
+  async function loadDevices({ silent = false } = {}) {
+    try {
+      if (silent) {
+        setIsRefreshing(true)
+      } else {
+        setIsLoading(true)
       }
-      setDevices((prev) => [...prev, newDevice])
-    }
-    setIsModalOpen(false)
-    setEditingDevice(null)
-  }
 
-  const getDeviceIcon = (type: Device['type']) => {
-    switch (type) {
-      case 'terminal':
-        return Monitor
-      case 'tablet':
-        return Tablet
-      case 'mobile':
-        return Smartphone
+      setError('')
+      const result = await listDevices()
+      setDevices(result.devices)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dispositivos.')
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
-  const onlineDevices = devices.filter((d) => d.status === 'online').length
-  const totalSales = devices.reduce((sum, d) => sum + d.totalSales, 0)
-  const totalOrders = devices.reduce((sum, d) => sum + d.salesCount, 0)
+  useEffect(() => {
+    loadDevices()
+
+    const interval = window.setInterval(() => {
+      loadDevices({ silent: true })
+    }, 30_000)
+
+    return () => window.clearInterval(interval)
+  }, [])
+
+  async function handleDeleteDevice(device: CompanyDevice) {
+    const confirmed = window.confirm(
+      `Remover o dispositivo "${device.name}" desta empresa? O histórico de pedidos continua salvo, mas ele deixa de aparecer como dispositivo cadastrado.`
+    )
+
+    if (!confirmed) return
+
+    try {
+      setError('')
+      await deleteDevice(device.id)
+      setDevices((prev) => prev.filter((item) => item.id !== device.id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao remover dispositivo.')
+    }
+  }
+
+  const onlineDevices = devices.filter((device) => device.status === 'online').length
+  const totalSales = devices.reduce((sum, device) => sum + device.totalSales, 0)
+  const totalOrders = devices.reduce((sum, device) => sum + device.salesCount, 0)
+
+  const devicesByStatus = useMemo(() => {
+    return [...devices].sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'online' ? -1 : 1
+      return new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime()
+    })
+  }, [devices])
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
-        <div className="flex items-center gap-3">
-          <Monitor className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-semibold text-foreground">Dispositivos</h1>
-          <span className="text-sm text-muted-foreground">
-            {onlineDevices} de {devices.length} online
-          </span>
-        </div>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Novo Dispositivo
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 p-6 border-b border-border bg-card/50">
-        <div className="bg-card rounded-lg border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-success/10 rounded-lg">
-              <Power className="h-5 w-5 text-success" />
+    <div className="flex h-full flex-col overflow-hidden bg-background">
+      <div className="border-b border-border bg-card px-6 py-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Monitor className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Dispositivos Online</p>
-              <p className="text-2xl font-bold text-foreground">{onlineDevices}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-lg border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Monitor className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Pedidos Hoje</p>
-              <p className="text-2xl font-bold text-foreground">{totalOrders}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-lg border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-warning/10 rounded-lg">
-              <Monitor className="h-5 w-5 text-warning" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Vendas Hoje</p>
-              <p className="text-2xl font-bold text-foreground">{formatCurrency(totalSales)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Devices Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {devices.map((device) => {
-            const Icon = getDeviceIcon(device.type)
-            return (
-              <div
-                key={device.id}
-                className="bg-card rounded-xl border border-border p-5 hover:border-primary/50 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-lg ${device.status === 'online' ? 'bg-success/10' : 'bg-muted'}`}>
-                      <Icon className={`h-6 w-6 ${device.status === 'online' ? 'text-success' : 'text-muted-foreground'}`} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{device.name}</h3>
-                      <p className="text-sm text-muted-foreground">{device.serialNumber}</p>
-                    </div>
-                  </div>
-                  {device.status === 'online' ? (
-                    <span className="flex items-center gap-1 px-2 py-1 bg-success/10 text-success rounded-full text-xs font-medium">
-                      <CheckCircle className="h-3 w-3" />
-                      Online
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground rounded-full text-xs font-medium">
-                      <XCircle className="h-3 w-3" />
-                      Offline
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  {device.operator && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Operador</span>
-                      <span className="text-foreground font-medium">{device.operator}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Vendas Hoje</span>
-                    <span className="text-foreground">{device.salesCount} pedidos</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="font-mono text-foreground">{formatCurrency(device.totalSales)}</span>
-                  </div>
-                  {device.lastActivity && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Última Atividade</span>
-                      <span className="text-foreground">
-                        {device.lastActivity.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t border-border">
-                  <button
-                    onClick={() => handleDeleteDevice(device.id)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="text-sm">Remover</span>
-                  </button>
-                </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-black tracking-tight text-foreground">Dispositivos</h1>
+                <span className="rounded-full border border-border bg-background px-3 py-1 text-xs font-bold text-muted-foreground">
+                  {onlineDevices} de {devices.length} online
+                </span>
               </div>
-            )
-          })}
-
-          {devices.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Monitor className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhum dispositivo cadastrado</p>
-              <p className="text-sm">Adicione um dispositivo para começar</p>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Veja quais computadores, celulares e tablets estão conectados à empresa, quem está logado em cada um e as vendas registradas hoje por dispositivo.
+              </p>
             </div>
-          )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => loadDevices({ silent: true })}
+            disabled={isRefreshing}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-bold text-foreground shadow-sm transition hover:bg-muted disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </button>
         </div>
       </div>
 
-      {/* Device Modal */}
-      {isModalOpen && (
-        <DeviceModal
-          device={editingDevice}
-          onSave={handleSaveDevice}
-          onClose={() => {
-            setIsModalOpen(false)
-            setEditingDevice(null)
-          }}
+      <div className="grid gap-4 border-b border-border bg-card/50 p-6 md:grid-cols-3">
+        <MetricCard
+          icon={<Power className="h-5 w-5" />}
+          label="Dispositivos online"
+          value={`${onlineDevices}`}
+          detail={`${devices.length} dispositivo(s) conhecidos`}
         />
+        <MetricCard
+          icon={<Activity className="h-5 w-5" />}
+          label="Pedidos hoje"
+          value={`${totalOrders}`}
+          detail="Pedidos pagos vinculados a dispositivos"
+        />
+        <MetricCard
+          icon={<Monitor className="h-5 w-5" />}
+          label="Vendas hoje"
+          value={formatCurrency(totalSales)}
+          detail="Total pago hoje por dispositivo"
+        />
+      </div>
+
+      {error && (
+        <div className="mx-6 mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
+          {error}
+        </div>
       )}
+
+      <div className="flex-1 overflow-y-auto p-6">
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-72 animate-pulse rounded-3xl border border-border bg-card" />
+            ))}
+          </div>
+        ) : devicesByStatus.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {devicesByStatus.map((device) => (
+              <DeviceCard key={device.id} device={device} onDelete={() => handleDeleteDevice(device)} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
+            <Monitor className="mb-4 h-12 w-12 opacity-50" />
+            <p className="text-lg font-bold text-foreground">Nenhum dispositivo conectado ainda</p>
+            <p className="mt-1 max-w-md text-sm">
+              Quando alguém acessar o ORDR nesta empresa, o dispositivo aparecerá aqui automaticamente.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-function DeviceModal({
-  device,
-  onSave,
-  onClose,
-}: {
-  device: Device | null
-  onSave: (data: Omit<Device, 'id' | 'status' | 'lastActivity' | 'salesCount' | 'totalSales'>) => void
-  onClose: () => void
-}) {
-  const [name, setName] = useState(device?.name || '')
-  const [type, setType] = useState<Device['type']>(device?.type || 'terminal')
-  const [serialNumber, setSerialNumber] = useState(device?.serialNumber || '')
-  const [operator, setOperator] = useState(device?.operator || '')
+function MetricCard({ icon, label, value, detail }: { icon: ReactNode; label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+          <p className="truncate text-2xl font-black text-foreground">{value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave({
-      name,
-      type,
-      serialNumber,
-      operator: operator || undefined,
-    })
-  }
+function DeviceCard({ device, onDelete }: { device: CompanyDevice; onDelete: () => void }) {
+  const Icon = getDeviceIcon(device.type)
+  const isOnline = device.status === 'online'
+  const currentUserName = device.currentUser?.name || device.currentUser?.username || 'Nenhum usuário identificado'
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-card rounded-xl border border-border w-full max-w-md mx-4 shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">
-            {device ? 'Editar Dispositivo' : 'Novo Dispositivo'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <div className="group rounded-3xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/45 hover:shadow-lg">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${isOnline ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-black text-foreground">{device.name}</h3>
+            <p className="truncate text-sm text-muted-foreground">
+              {getDeviceTypeLabel(device.type)}{device.os ? ` · ${device.os}` : ''}{device.browser ? ` · ${device.browser}` : ''}
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Ex: Terminal 01"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as Device['type'])}
-              className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="terminal">Terminal</option>
-              <option value="tablet">Tablet</option>
-              <option value="mobile">Mobile</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Número de Série</label>
-            <input
-              type="text"
-              value={serialNumber}
-              onChange={(e) => setSerialNumber(e.target.value)}
-              className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Ex: TRM-001-2024"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Operador (opcional)</label>
-            <input
-              type="text"
-              value={operator}
-              onChange={(e) => setOperator(e.target.value)}
-              className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Nome do operador"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/80 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-            >
-              {device ? 'Salvar' : 'Adicionar'}
-            </button>
-          </div>
-        </form>
+        {isOnline ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
+            <CheckCircle className="h-3.5 w-3.5" />
+            Online
+          </span>
+        ) : (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-black text-muted-foreground">
+            <XCircle className="h-3.5 w-3.5" />
+            Offline
+          </span>
+        )}
       </div>
+
+      <div className="mb-5 rounded-2xl border border-border bg-background p-4">
+        <div className="mb-2 flex items-center gap-2 text-sm font-black text-foreground">
+          <UserRound className="h-4 w-4 text-primary" />
+          Usuário logado
+        </div>
+        <p className="truncate text-sm text-muted-foreground">{currentUserName}</p>
+        {device.currentUser?.username && device.currentUser.name && (
+          <p className="mt-1 text-xs text-muted-foreground">@{device.currentUser.username}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <InfoTile label="Pedidos hoje" value={`${device.salesCount}`} />
+        <InfoTile label="Vendas hoje" value={formatCurrency(device.totalSales)} />
+        <InfoTile label="Último sinal" value={getRelativeLastSeen(device.lastSeenAt)} />
+        <InfoTile label="Registrado" value={formatDateTime(device.firstSeenAt)} />
+      </div>
+
+      <div className="mt-4 space-y-2 rounded-2xl border border-border bg-background p-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          {isOnline ? <Clock className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+          <span>Última atividade: {formatDateTime(device.lastSeenAt)}</span>
+        </div>
+        {device.ipAddress && <p className="truncate">IP: {device.ipAddress}</p>}
+      </div>
+
+      <div className="mt-4 flex items-center justify-end border-t border-border pt-4">
+        <button
+          type="button"
+          onClick={onDelete}
+          className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+          Remover
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function InfoTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background p-3">
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-foreground">{value}</p>
     </div>
   )
 }

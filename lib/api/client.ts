@@ -44,6 +44,15 @@ function createTimeoutSignal(timeoutMs: number) {
   }
 }
 
+function getCurrentCompanyDeviceId() {
+  if (typeof window === 'undefined') return null
+
+  const companyId = getCompanyIdFromStorage()
+  if (!companyId) return null
+
+  return localStorage.getItem(`ordr-device-id:${companyId}`)
+}
+
 function shouldSendJsonContentType(options?: RequestInit) {
   const method = options?.method?.toUpperCase() ?? 'GET'
 
@@ -67,6 +76,7 @@ export async function apiFetch<T>(
   options?: RequestInit
 ): Promise<T> {
   const companyId = getCompanyIdFromStorage()
+  const deviceId = getCurrentCompanyDeviceId()
   const apiUrl = getApiBaseUrl()
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const url = `${apiUrl}${normalizedPath}`
@@ -78,6 +88,7 @@ export async function apiFetch<T>(
       ? { 'Content-Type': 'application/json' }
       : {}),
     ...(companyId ? { 'x-company-id': companyId } : {}),
+    ...(deviceId ? { 'x-device-id': deviceId } : {}),
     ...(options?.headers || {}),
   }
 
