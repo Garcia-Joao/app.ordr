@@ -8,7 +8,7 @@ import { AccountMenu } from './account-menu'
 import { AppToolbar } from './app-toolbar'
 import { MobileBottomNav } from './mobile-bottom-nav'
 import { OrdrLoading } from '@/components/ui/ordr-loading'
-import { AlertTriangle, Building2, CalendarClock, Settings } from 'lucide-react'
+import { AlertTriangle, Building2, CalendarClock, ChevronDown, ChevronUp, FlaskConical, Settings } from 'lucide-react'
 import {
   EditAccountModal,
   type EditableAccountData,
@@ -48,6 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isCheckingSession, setIsCheckingSession] = useState(!isPublicRoute)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSavingAccount, setIsSavingAccount] = useState(false)
+  const [isLicenseAlertCollapsed, setIsLicenseAlertCollapsed] = useState(false)
 
   useEffect(() => {
     if (isPublicRoute) {
@@ -62,6 +63,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }, 1000)
 
     return () => clearInterval(timer)
+  }, [isPublicRoute])
+
+  useEffect(() => {
+    if (isPublicRoute || typeof window === 'undefined') return
+
+    setIsLicenseAlertCollapsed(localStorage.getItem('ordr-license-alert-collapsed') === 'true')
   }, [isPublicRoute])
 
   useEffect(() => {
@@ -224,6 +231,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       licenseDaysRemaining < 7
   )
 
+  const isCurrentCompanyTest = Boolean(currentCompany?.isTest)
+
+  function handleToggleLicenseAlert() {
+    setIsLicenseAlertCollapsed((current) => {
+      const next = !current
+      localStorage.setItem('ordr-license-alert-collapsed', String(next))
+      return next
+    })
+  }
+
   function formatLicenseDate(value?: string | null) {
     if (!value) return 'Sem vencimento definido'
 
@@ -377,19 +394,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           />
 
           <main className="flex-1 min-h-0 overflow-auto pb-24 lg:pb-0">
-            {isLicenseExpiringSoon && (
-              <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 dark:text-amber-200 lg:px-6">
-                <div className="mx-auto flex max-w-7xl flex-col gap-2 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            {isCurrentCompanyTest && (
+              <div className="border-b border-sky-500/25 bg-sky-500/10 px-4 py-2 text-sky-950 dark:text-sky-100 lg:px-6">
+                <div className="mx-auto flex max-w-7xl flex-col gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
-                      <AlertTriangle className="h-5 w-5" />
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-700 dark:text-sky-200">
+                      <FlaskConical className="h-5 w-5" />
                     </span>
                     <div>
                       <p className="text-sm font-black uppercase tracking-[0.2em]">
-                        Licença perto do vencimento
+                        Ambiente de teste ativo
                       </p>
                       <p className="mt-1 text-sm font-medium">
-                        A licença da empresa <strong>{currentCompany?.name}</strong> vence {licenseDaysRemaining === 0 ? 'hoje' : `em ${licenseDaysRemaining} dia(s)`}.
+                        Você está usando <strong>{currentCompany?.name}</strong>. Use este ambiente apenas para testes; vendas, estoque e cadastros reais devem ser feitos na empresa de produção.
                       </p>
                     </div>
                   </div>
@@ -397,11 +414,67 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => router.push('/configuracoes/')}
-                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600"
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-sky-700"
                   >
-                    <Settings className="h-4 w-4" />
-                    Ver licença
+                    <Building2 className="h-4 w-4" />
+                    Trocar empresa
                   </button>
+                </div>
+              </div>
+            )}
+
+            {isLicenseExpiringSoon && (
+              <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 dark:text-amber-200 lg:px-6">
+                <div className="mx-auto max-w-7xl rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 shadow-sm">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                        <AlertTriangle className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-[0.2em]">
+                          Licença perto do vencimento
+                        </p>
+                        {!isLicenseAlertCollapsed && (
+                          <p className="mt-1 text-sm font-medium">
+                            A licença da empresa <strong>{currentCompany?.name}</strong> vence {licenseDaysRemaining === 0 ? 'hoje' : `em ${licenseDaysRemaining} dia(s)`}.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      {!isLicenseAlertCollapsed && (
+                        <button
+                          type="button"
+                          onClick={() => router.push('/configuracoes/')}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600"
+                        >
+                          <Settings className="h-4 w-4" />
+                          Ver licença
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleToggleLicenseAlert}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-background/60 px-3 text-sm font-bold text-amber-900 transition hover:bg-amber-500/15 dark:text-amber-100"
+                        aria-expanded={!isLicenseAlertCollapsed}
+                      >
+                        {isLicenseAlertCollapsed ? (
+                          <>
+                            <ChevronDown className="h-4 w-4" />
+                            Expandir
+                          </>
+                        ) : (
+                          <>
+                            <ChevronUp className="h-4 w-4" />
+                            Recolher
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

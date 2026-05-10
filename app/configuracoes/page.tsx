@@ -545,6 +545,28 @@ export default function ConfiguracoesPage() {
             </div>
           </section>
 
+          {selectedCompany?.isTest && (
+            <section className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-5 text-sky-950 dark:text-sky-100">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-sky-500/15 p-2 text-sky-700 dark:text-sky-300">
+                  <FlaskConical className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.2em]">Ambiente de teste selecionado</p>
+                  <h2 className="mt-1 text-lg font-semibold">{selectedCompany.name}</h2>
+                  <p className="mt-1 text-sm font-medium">
+                    As ações feitas nesta empresa são para teste. Para vendas reais, estoque real, pedidos reais e cadastros definitivos, selecione a empresa de produção.
+                  </p>
+                  {selectedCompany.licenseSourceCompanyName && (
+                    <p className="mt-2 text-xs text-sky-800 dark:text-sky-200">
+                      Licença herdada de: {selectedCompany.licenseSourceCompanyName}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
           <section className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className={`p-2 rounded-lg ${selectedCompany?.licenseActive ? 'bg-green-500/10' : 'bg-destructive/10'}`}>
