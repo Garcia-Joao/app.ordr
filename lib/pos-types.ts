@@ -31,6 +31,8 @@ export type Product = {
   variationGroups?: ProductVariationGroup[]
   environmentPrices?: ProductEnvironmentPrice[]
   category?: CategoryConfig
+  printPortId?: string | null
+  printPort?: { id: string; name: string } | null
 }
 
 export interface OrderItemVariationSelection {
@@ -106,6 +108,8 @@ export interface CategoryConfig {
   id: string
   name: string
   emoji: string
+  printPortId?: string | null
+  printPort?: { id: string; name: string } | null
 }
 
 export const DEFAULT_CATEGORIES: CategoryConfig[] = []

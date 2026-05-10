@@ -20,6 +20,7 @@ import {
   type CategoryConfig,
 } from '@/lib/pos-types'
 import { createProduct, deleteProduct, getProducts, updateProduct } from '@/lib/api/products'
+import { listPrintPorts, type PrintPort } from '@/lib/api/printers'
 import {
   createCategory,
   deleteCategory,
@@ -98,6 +99,7 @@ export default function ProdutosPage() {
   const [categories, setCategories] = useState<CategoryConfig[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [salesEnvironments, setSalesEnvironments] = useState<SalesEnvironment[]>([])
+  const [printPorts, setPrintPorts] = useState<PrintPort[]>([])
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
@@ -108,15 +110,17 @@ export default function ProdutosPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [productsData, categoriesData, environmentsData] = await Promise.all([
+        const [productsData, categoriesData, environmentsData, portsData] = await Promise.all([
           getProducts(),
           getCategories(),
           getSalesEnvironments(),
+          listPrintPorts(),
         ])
 
         setProducts(productsData)
         setCategories(categoriesData)
         setSalesEnvironments(environmentsData)
+        setPrintPorts(portsData.ports)
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       } finally {
@@ -576,6 +580,7 @@ export default function ProdutosPage() {
           product={editingProduct}
           categories={categories}
           salesEnvironments={salesEnvironments}
+          printPorts={printPorts}
           onSave={handleSaveProduct}
           onClose={() => {
             setIsProductModalOpen(false)
@@ -587,6 +592,7 @@ export default function ProdutosPage() {
       {isCategoryModalOpen && (
         <CategoryModal
           category={editingCategory}
+          printPorts={printPorts}
           onSave={handleSaveCategory}
           onClose={() => {
             setIsCategoryModalOpen(false)
@@ -602,12 +608,14 @@ function ProductModal({
   product,
   categories,
   salesEnvironments,
+  printPorts,
   onSave,
   onClose,
 }: {
   product: Product | null
   categories: CategoryConfig[]
   salesEnvironments: SalesEnvironment[]
+  printPorts: PrintPort[]
   onSave: (data: Omit<Product, 'id'>) => void
   onClose: () => void
 }) {
@@ -615,6 +623,7 @@ function ProductModal({
   const [price, setPrice] = useState(product?.price.toString() || '')
   const [categoryId, setCategoryId] = useState(product?.categoryId || '')
   const [emoji, setEmoji] = useState(product?.emoji || '📦')
+  const [printPortId, setPrintPortId] = useState(product?.printPortId || '')
   const [variationGroups, setVariationGroups] = useState<EditableProductVariationGroup[]>(
     () =>
       ((product?.variationGroups ?? []) as EditableProductVariationGroup[]).map(
@@ -796,6 +805,7 @@ function ProductModal({
       recipeOutputQuantity: product?.recipeOutputQuantity ?? null,
       recipeOutputUnit: product?.recipeOutputUnit ?? null,
       recipeItems: product?.recipeItems ?? [],
+      printPortId: printPortId || null,
     } as Omit<Product, 'id'>)
   }
 
@@ -875,6 +885,25 @@ function ProductModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-background/40 p-4">
+            <label className="block text-sm font-medium text-foreground mb-2">Port de impressão</label>
+            <select
+              value={printPortId}
+              onChange={(event) => setPrintPortId(event.target.value)}
+              className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground"
+            >
+              <option value="">Seguir port da categoria</option>
+              {printPorts.map((port) => (
+                <option key={port.id} value={port.id}>
+                  {port.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Use isto apenas quando o produto precisar ir para uma impressora diferente da categoria.
+            </p>
           </div>
 
           <div className="border border-border rounded-xl p-4 space-y-4">
@@ -1156,15 +1185,18 @@ function VariationGroupEditor({
 
 function CategoryModal({
   category,
+  printPorts,
   onSave,
   onClose,
 }: {
   category: CategoryConfig | null
+  printPorts: PrintPort[]
   onSave: (data: Omit<CategoryConfig, 'id'>) => void
   onClose: () => void
 }) {
   const [name, setName] = useState(category?.name || '')
   const [emoji, setEmoji] = useState(category?.emoji || '📦')
+  const [printPortId, setPrintPortId] = useState(category?.printPortId || '')
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -1172,6 +1204,7 @@ function CategoryModal({
     onSave({
       name,
       emoji,
+      printPortId: printPortId || null,
     })
   }
 
@@ -1213,6 +1246,20 @@ function CategoryModal({
               className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-3xl"
               maxLength={2}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Port de impressão</label>
+            <select
+              value={printPortId}
+              onChange={(event) => setPrintPortId(event.target.value)}
+              className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground"
+            >
+              <option value="">Sem port configurada</option>
+              {printPorts.map((port) => (
+                <option key={port.id} value={port.id}>{port.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col gap-3 pt-4 sm:flex-row">

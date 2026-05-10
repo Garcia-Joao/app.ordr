@@ -74,13 +74,14 @@ export function isElectronTerminalRuntime() {
   return typeof window !== 'undefined' && Boolean(window.ordrTerminal?.isElectron)
 }
 
-export async function getElectronLocalPrinters(): Promise<LocalPrinterInfo[] | null> {
-  if (!isElectronTerminalRuntime()) return null
+export async function getElectronLocalPrinters(): Promise<LocalPrinterInfo[]> {
+  if (!isElectronTerminalRuntime()) return []
 
   try {
-    return await window.ordrTerminal!.getPrinters()
+    const printers = await window.ordrTerminal!.getPrinters()
+    return Array.isArray(printers) ? printers : []
   } catch {
-    return null
+    return []
   }
 }
 
@@ -113,7 +114,7 @@ export function getDeviceDisplayName() {
 export async function getDeviceHeartbeatPayload(companyId?: string | null) {
   const isElectron = isElectronTerminalRuntime()
   const electronName = isElectron ? await getElectronDeviceNameFallback() : null
-  const localPrinters = isElectron ? await getElectronLocalPrinters() : null
+  const localPrinters = isElectron ? await getElectronLocalPrinters() : undefined
 
   return {
     deviceId: getStoredDeviceId(companyId),
@@ -122,7 +123,7 @@ export async function getDeviceHeartbeatPayload(companyId?: string | null) {
     browser: detectBrowser(),
     os: detectOS(),
     userAgent: hasNavigator() ? navigator.userAgent : null,
-    clientType: isElectron ? 'ELECTRON' as const : 'WEB' as const,
+    clientType: isElectron ? ('ELECTRON' as const) : ('WEB' as const),
     isPrintTerminal: isElectron,
     printTerminalEnabled: isElectron,
     localPrinters,

@@ -2,14 +2,6 @@ import { apiFetch } from './client'
 
 export type DeviceType = 'DESKTOP' | 'MOBILE' | 'TABLET' | 'UNKNOWN'
 export type DeviceStatus = 'online' | 'offline'
-export type DeviceClientType = 'WEB' | 'ELECTRON'
-
-export type LocalPrinterInfo = {
-  name: string
-  displayName?: string | null
-  description?: string | null
-  isDefault?: boolean | null
-}
 
 export type CompanyDevice = {
   id: string
@@ -19,11 +11,6 @@ export type CompanyDevice = {
   os?: string | null
   userAgent?: string | null
   ipAddress?: string | null
-  clientType?: DeviceClientType
-  isPrintTerminal?: boolean
-  printTerminalEnabled?: boolean
-  localPrinters?: LocalPrinterInfo[] | null
-  terminalApprovedAt?: string | null
   firstSeenAt: string
   lastSeenAt: string
   status: DeviceStatus
@@ -32,21 +19,33 @@ export type CompanyDevice = {
     username: string
     name?: string | null
   } | null
+  clientType?: 'WEB' | 'ELECTRON'
+  isPrintTerminal?: boolean
+  printTerminalEnabled?: boolean
+  terminalApprovedAt?: string | null
+  localPrinters?: Array<{ name: string; displayName?: string | null; description?: string | null; isDefault?: boolean | null }>
   salesCount: number
   totalSales: number
 }
 
+export type LocalPrinterInfo = {
+  name: string
+  displayName?: string | null
+  description?: string | null
+  isDefault?: boolean | null
+}
+
 export type DeviceHeartbeatInput = {
   deviceId?: string | null
-  name: string
-  type: DeviceType
+  name?: string | null
+  type?: DeviceType | string | null
   browser?: string | null
   os?: string | null
   userAgent?: string | null
-  clientType?: DeviceClientType
+  clientType?: 'WEB' | 'ELECTRON'
   isPrintTerminal?: boolean
   printTerminalEnabled?: boolean
-  localPrinters?: LocalPrinterInfo[] | null
+  localPrinters?: LocalPrinterInfo[]
 }
 
 export function listDevices() {

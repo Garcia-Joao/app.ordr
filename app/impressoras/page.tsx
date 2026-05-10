@@ -1,96 +1,80 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle,
+  Link2,
+  Loader2,
+  MonitorCheck,
   Plus,
   Printer,
   RefreshCw,
   Save,
-  Settings2,
   Trash2,
   X,
-  Loader2,
 } from 'lucide-react'
 import {
-  getSystemPrinters,
-  getPrinterSettings,
-  savePrinterSettings,
-  testPrinter,
-  type SystemPrinter,
-  type RegisteredPrinter,
-  type OrderTicketTemplate,
-  type PrinterSettings,
-} from '@/lib/api'
+  bindPrintPort,
+  createPrintPort,
+  deletePrintPort,
+  listPrintPorts,
+  listPrintTerminals,
+  updatePrintPort,
+  type LocalPrinter,
+  type PrintPort,
+  type PrintTerminal,
+} from '@/lib/api/printers'
 
-function createId() {
-  return Math.random().toString(36).substring(2, 10)
+function formatDateTime(value?: string | null) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
-const defaultTemplate: OrderTicketTemplate = {
-  showLogo: true,
-  showOrderId: true,
-  showDate: true,
-  showComandaName: true,
-  showVariations: true,
-  showNotes: true,
-  headerText: '*** ORDR ***',
-  footerText: '',
+function openTerminal() {
+  window.location.href = 'ordr://terminal'
+}
+
+function getPrinterLabel(printer: LocalPrinter) {
+  return printer.displayName || printer.name
 }
 
 export default function ImpressorasPage() {
-  const [systemPrinters, setSystemPrinters] = useState<SystemPrinter[]>([])
-  const [registeredPrinters, setRegisteredPrinters] = useState<RegisteredPrinter[]>([])
-  const [orderPrinterId, setOrderPrinterId] = useState<string | null>(null)
-  const [template, setTemplate] = useState<OrderTicketTemplate>(defaultTemplate)
-
+  const [ports, setPorts] = useState<PrintPort[]>([])
+  const [terminals, setTerminals] = useState<PrintTerminal[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isTesting, setIsTesting] = useState<string | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingPrinter, setEditingPrinter] = useState<RegisteredPrinter | null>(null)
-
+  const [editingPort, setEditingPort] = useState<PrintPort | null>(null)
+  const [isPortModalOpen, setIsPortModalOpen] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const orderPrinter = useMemo(
-    () => registeredPrinters.find((printer) => printer.id === orderPrinterId) ?? null,
-    [registeredPrinters, orderPrinterId]
+  const onlineTerminals = useMemo(
+    () => terminals.filter((terminal) => terminal.status === 'online' && terminal.printTerminalEnabled),
+    [terminals]
   )
-
-  const blockingMessage = useMemo(() => {
-    if (isLoading) return 'Carregando impressoras...'
-    if (isRefreshing) return 'Atualizando impressoras...'
-    if (isSaving) return 'Salvando configurações...'
-    if (isTesting) return 'Enviando teste para a impressora...'
-    return null
-  }, [isLoading, isRefreshing, isSaving, isTesting])
-
-  const isBlocked = Boolean(blockingMessage)
 
   async function loadData() {
     try {
       setError(null)
-
-      const [detected, settings] = await Promise.all([
-        getSystemPrinters(),
-        getPrinterSettings(),
+      const [portsResult, terminalsResult] = await Promise.all([
+        listPrintPorts(),
+        listPrintTerminals(),
       ])
-
-      setSystemPrinters(detected)
-      setRegisteredPrinters(settings.printers ?? [])
-      setOrderPrinterId(settings.orderPrinterId ?? null)
-      setTemplate({
-        ...defaultTemplate,
-        ...(settings.orderTicketTemplate ?? {}),
-      })
+      setPorts(portsResult.ports)
+      setTerminals(terminalsResult.terminals)
     } catch (err) {
       console.error(err)
-      setError('Não foi possível carregar as impressoras.')
+      setError('Não foi possível carregar impressoras e terminais.')
     } finally {
       setIsLoading(false)
-      setIsRefreshing(false)
     }
   }
 
@@ -98,169 +82,142 @@ export default function ImpressorasPage() {
     loadData()
   }, [])
 
-  async function persist(next?: Partial<PrinterSettings>) {
-    const payload: PrinterSettings = {
-      printers: next?.printers ?? registeredPrinters,
-      orderPrinterId: next?.orderPrinterId ?? orderPrinterId,
-      orderTicketTemplate: next?.orderTicketTemplate ?? template,
-    }
-
-    const saved = await savePrinterSettings(payload)
-
-    setRegisteredPrinters(saved.printers)
-    setOrderPrinterId(saved.orderPrinterId)
-    setTemplate({
-      ...defaultTemplate,
-      ...saved.orderTicketTemplate,
-    })
-
-    return saved
+  function handleCreatePort() {
+    setEditingPort(null)
+    setIsPortModalOpen(true)
   }
 
-  async function handleRefresh() {
-    setIsRefreshing(true)
-    setMessage(null)
-    await loadData()
+  function handleEditPort(port: PrintPort) {
+    setEditingPort(port)
+    setIsPortModalOpen(true)
   }
 
-  function handleAddNew() {
-    setEditingPrinter(null)
-    setIsModalOpen(true)
-  }
-
-  function handleEdit(printer: RegisteredPrinter) {
-    setEditingPrinter(printer)
-    setIsModalOpen(true)
-  }
-
-  async function handleSavePrinter(data: RegisteredPrinter) {
+  async function handleSavePort(data: {
+    name: string
+    description: string
+    active: boolean
+    sortOrder: number
+    terminalDeviceId: string
+    localPrinterName: string
+    localPrinterLabel: string
+    paperWidth: number | null
+  }) {
     try {
       setIsSaving(true)
       setError(null)
       setMessage(null)
 
-      const nextPrinters = editingPrinter
-        ? registeredPrinters.map((printer) =>
-            printer.id === editingPrinter.id ? data : printer
-          )
-        : [...registeredPrinters, data]
+      const payload = {
+        name: data.name,
+        description: data.description || null,
+        active: data.active,
+        sortOrder: data.sortOrder,
+        terminalDeviceId: data.terminalDeviceId || null,
+        localPrinterName: data.localPrinterName || null,
+        localPrinterLabel: data.localPrinterLabel || null,
+        paperWidth: data.paperWidth,
+      }
 
-      const nextOrderPrinterId =
-        orderPrinterId ?? (data.type === 'orders' ? data.id : null)
+      if (editingPort) {
+        await updatePrintPort(editingPort.id, payload)
+        setMessage('Port atualizada com sucesso.')
+      } else {
+        await createPrintPort(payload)
+        setMessage('Port criada com sucesso.')
+      }
 
-      await persist({
-        printers: nextPrinters,
-        orderPrinterId: nextOrderPrinterId,
-      })
-
-      setMessage('Impressora salva com sucesso.')
-      setIsModalOpen(false)
-      setEditingPrinter(null)
+      setIsPortModalOpen(false)
+      setEditingPort(null)
+      await loadData()
     } catch (err) {
       console.error(err)
-      setError('Não foi possível salvar a impressora.')
+      setError(err instanceof Error ? err.message : 'Não foi possível salvar a port.')
     } finally {
       setIsSaving(false)
     }
   }
 
-  async function handleDelete(printerId: string) {
-    try {
-      setError(null)
-      setMessage(null)
-
-      const nextPrinters = registeredPrinters.filter((printer) => printer.id !== printerId)
-      const nextOrderPrinterId = orderPrinterId === printerId ? null : orderPrinterId
-
-      await persist({
-        printers: nextPrinters,
-        orderPrinterId: nextOrderPrinterId,
-      })
-
-      setMessage('Impressora removida.')
-    } catch (err) {
-      console.error(err)
-      setError('Não foi possível remover a impressora.')
-    }
-  }
-
-  async function handleSetOrderPrinter(printerId: string) {
-    try {
-      setError(null)
-      setMessage(null)
-      await persist({ orderPrinterId: printerId })
-      setMessage('Impressora de pedidos definida.')
-    } catch (err) {
-      console.error(err)
-      setError('Não foi possível definir a impressora de pedidos.')
-    }
-  }
-
-  async function handleTest(printer: RegisteredPrinter) {
-    try {
-      setIsTesting(printer.id)
-      setError(null)
-      setMessage(null)
-
-      await testPrinter(printer.systemName)
-      setMessage('Teste enviado para a impressora.')
-    } catch (err) {
-      console.error(err)
-      setError('Não foi possível enviar o teste de impressão.')
-    } finally {
-      setIsTesting(null)
-    }
-  }
-
-  async function handleSaveTemplate() {
+  async function handleBindPort(port: PrintPort, terminalDeviceId: string, localPrinterName: string) {
     try {
       setIsSaving(true)
       setError(null)
       setMessage(null)
 
-      await persist({
-        orderTicketTemplate: template,
+      const terminal = terminals.find((item) => item.id === terminalDeviceId)
+      const printer = terminal?.localPrinters?.find((item) => item.name === localPrinterName)
+
+      await bindPrintPort(port.id, {
+        terminalDeviceId: terminalDeviceId || null,
+        localPrinterName: localPrinterName || null,
+        localPrinterLabel: printer ? getPrinterLabel(printer) : localPrinterName || null,
+        paperWidth: port.paperWidth ?? 80,
       })
 
-      setMessage('Modelo de impressão salvo.')
+      setMessage('Vínculo da port atualizado.')
+      await loadData()
     } catch (err) {
       console.error(err)
-      setError('Não foi possível salvar o modelo de impressão.')
+      setError(err instanceof Error ? err.message : 'Não foi possível vincular a impressora.')
     } finally {
       setIsSaving(false)
     }
   }
+
+  async function handleDeletePort(portId: string) {
+    const confirmed = window.confirm('Remover esta port? Categorias e produtos ligados a ela voltarão a ficar sem port configurada.')
+    if (!confirmed) return
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      setMessage(null)
+      await deletePrintPort(portId)
+      setMessage('Port removida.')
+      await loadData()
+    } catch (err) {
+      console.error(err)
+      setError('Não foi possível remover a port.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const blockingMessage = isLoading ? 'Carregando impressoras...' : isSaving ? 'Salvando...' : null
 
   return (
-    <div className="h-full flex flex-col overflow-hidden relative" aria-busy={isBlocked}>
+    <div className="h-full flex flex-col overflow-hidden relative" aria-busy={Boolean(blockingMessage)}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
         <div className="flex items-center gap-3">
           <Printer className="h-6 w-6 text-primary" />
           <div>
             <h1 className="text-xl font-semibold text-foreground">Impressoras</h1>
             <p className="text-sm text-muted-foreground">
-              Cadastre impressoras da máquina e escolha a impressora dos pedidos
+              Configure ports lógicas e vincule cada port a uma impressora local do terminal Electron.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={handleRefresh}
-            disabled={isBlocked}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={openTerminal}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <MonitorCheck className="h-4 w-4" />
+            Abrir terminal
+          </button>
+          <button
+            onClick={loadData}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
             Atualizar
           </button>
-
           <button
-            onClick={handleAddNew}
-            disabled={isBlocked}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleCreatePort}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Nova impressora
+            Nova port
           </button>
         </div>
       </div>
@@ -280,175 +237,174 @@ export default function ImpressorasPage() {
             </div>
           )}
 
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Impressoras cadastradas
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {registeredPrinters.length} impressora
-                  {registeredPrinters.length !== 1 ? 's' : ''} cadastrada
-                  {registeredPrinters.length !== 1 ? 's' : ''}
-                </p>
+          <section className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-6">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Ports de impressão</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Use as ports nas categorias e produtos. Ex: Bebidas → Port 1, Cozinha → Port 2.
+                  </p>
+                </div>
+                <span className="text-sm text-muted-foreground">{ports.length} port(s)</span>
               </div>
 
-              {orderPrinter && (
-                <div className="text-sm text-muted-foreground">
-                  Pedidos: <span className="text-foreground font-medium">{orderPrinter.name}</span>
+              {ports.length === 0 ? (
+                <div className="p-10 flex flex-col items-center justify-center text-center text-muted-foreground">
+                  <Printer className="h-12 w-12 mb-3 opacity-50" />
+                  <p className="text-base font-medium">Nenhuma port cadastrada</p>
+                  <p className="text-sm">Crie Port 1, Port 2 etc. e vincule cada uma a uma impressora local.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {ports.map((port) => {
+                    const selectedTerminal = terminals.find((terminal) => terminal.id === port.terminalDeviceId)
+                    const localPrinters = selectedTerminal?.localPrinters ?? []
+
+                    return (
+                      <div key={port.id} className="px-5 py-4 space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-foreground truncate">{port.name}</h3>
+                              <span className={`text-xs rounded-full px-2 py-0.5 ${port.active ? 'bg-green-500/10 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                                {port.active ? 'Ativa' : 'Inativa'}
+                              </span>
+                              {selectedTerminal && (
+                                <span className={`text-xs rounded-full px-2 py-0.5 ${selectedTerminal.status === 'online' ? 'bg-primary/10 text-primary' : 'bg-red-500/10 text-red-600'}`}>
+                                  Terminal {selectedTerminal.status === 'online' ? 'online' : 'offline'}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {port.description || 'Sem descrição'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Impressora: {port.localPrinterLabel || port.localPrinterName || 'não vinculada'}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => handleEditPort(port)} className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-accent">
+                              Editar
+                            </button>
+                            <button onClick={() => handleDeletePort(port.id)} className="p-2 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-500/10">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 rounded-lg border border-border bg-background/50 p-3">
+                          <label className="grid gap-1 text-sm">
+                            <span className="font-medium text-foreground">Terminal</span>
+                            <select
+                              value={port.terminalDeviceId ?? ''}
+                              onChange={(event) => handleBindPort(port, event.target.value, '')}
+                              className="h-10 px-3 rounded-lg border border-border bg-background text-sm"
+                            >
+                              <option value="">Sem terminal</option>
+                              {terminals.map((terminal) => (
+                                <option key={terminal.id} value={terminal.id}>
+                                  {terminal.name} · {terminal.status === 'online' ? 'online' : 'offline'}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label className="grid gap-1 text-sm">
+                            <span className="font-medium text-foreground">Impressora local</span>
+                            <select
+                              value={port.localPrinterName ?? ''}
+                              disabled={!selectedTerminal}
+                              onChange={(event) => handleBindPort(port, port.terminalDeviceId ?? '', event.target.value)}
+                              className="h-10 px-3 rounded-lg border border-border bg-background text-sm disabled:opacity-50"
+                            >
+                              <option value="">Sem impressora</option>
+                              {localPrinters.map((printer) => (
+                                <option key={printer.name} value={printer.name}>
+                                  {getPrinterLabel(printer)}{printer.isDefault ? ' · padrão' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
 
-            {isLoading ? (
-              <div className="p-6 text-sm text-muted-foreground">
-                Carregando impressoras...
-              </div>
-            ) : registeredPrinters.length === 0 ? (
-              <div className="p-10 flex flex-col items-center justify-center text-center text-muted-foreground">
-                <Printer className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-base font-medium">Nenhuma impressora cadastrada</p>
-                <p className="text-sm">Clique em “Nova impressora” para cadastrar uma impressora detectada.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {registeredPrinters.map((printer) => (
-                  <div
-                    key={printer.id}
-                    className="px-5 py-4 flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                        <Printer className="h-5 w-5" />
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-foreground truncate">
-                            {printer.name}
-                          </p>
-
-                          {printer.id === orderPrinterId && (
-                            <span className="text-xs rounded-full bg-primary/10 text-primary px-2 py-0.5">
-                              Pedidos
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-sm text-muted-foreground truncate">
-                          {printer.systemName} • {printer.portName || 'Sem porta'} • {printer.paperWidth}mm
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleTest(printer)}
-                        disabled={isTesting === printer.id}
-                        className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-accent disabled:opacity-50"
-                      >
-                        {isTesting === printer.id ? 'Testando...' : 'Teste'}
-                      </button>
-
-                      <button
-                        onClick={() => handleSetOrderPrinter(printer.id)}
-                        disabled={printer.id === orderPrinterId}
-                        className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-accent disabled:opacity-50"
-                      >
-                        Usar em pedidos
-                      </button>
-
-                      <button
-                        onClick={() => handleEdit(printer)}
-                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                      >
-                        <Settings2 className="h-4 w-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(printer.id)}
-                        className="p-2 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-500/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+            <div className="space-y-6">
+              <div className="rounded-xl border border-border bg-card p-5">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground">Terminal conectado</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Apenas o Electron Terminal consegue acessar impressoras locais.
+                    </p>
                   </div>
-                ))}
+                  <span className="text-sm rounded-full bg-primary/10 text-primary px-3 py-1">
+                    {onlineTerminals.length} online
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {terminals.map((terminal) => (
+                    <div key={terminal.id} className="rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-foreground">{terminal.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Usuário: {terminal.currentUser?.name || terminal.currentUser?.username || '—'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Último sinal: {formatDateTime(terminal.lastSeenAt)}
+                          </p>
+                        </div>
+                        <span className={`text-xs rounded-full px-2 py-0.5 ${terminal.status === 'online' ? 'bg-green-500/10 text-green-700' : 'bg-red-500/10 text-red-600'}`}>
+                          {terminal.status === 'online' ? 'Online' : 'Offline'}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-xs text-muted-foreground">
+                        {(terminal.localPrinters ?? []).length} impressora(s) local(is)
+                      </div>
+                    </div>
+                  ))}
+
+                  {terminals.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                      Nenhum terminal Electron registrado. Abra o ORDR Terminal no computador das impressoras e faça login como admin.
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                Modelo do ticket de pedido
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Escolha quais informações serão impressas nos tickets.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Cabeçalho</label>
-                <input
-                  value={template.headerText}
-                  onChange={(e) =>
-                    setTemplate((prev) => ({ ...prev, headerText: e.target.value }))
-                  }
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Rodapé</label>
-                <input
-                  value={template.footerText}
-                  onChange={(e) =>
-                    setTemplate((prev) => ({ ...prev, footerText: e.target.value }))
-                  }
-                  placeholder="Opcional"
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
-                />
+              <div className="rounded-xl border border-border bg-card p-5">
+                <h2 className="text-lg font-semibold text-foreground">Como usar</h2>
+                <ol className="mt-3 space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+                  <li>Abra o Electron Terminal no computador conectado às impressoras.</li>
+                  <li>Crie ports lógicas: Port 1, Port 2, Cozinha, Bar etc.</li>
+                  <li>Vincule cada port a uma impressora local listada pelo terminal.</li>
+                  <li>Nas categorias/produtos, escolha a port de destino.</li>
+                </ol>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <Toggle label="Mostrar cabeçalho" checked={template.showLogo} onChange={(v) => setTemplate((p) => ({ ...p, showLogo: v }))} />
-              <Toggle label="Mostrar ID do pedido" checked={template.showOrderId} onChange={(v) => setTemplate((p) => ({ ...p, showOrderId: v }))} />
-              <Toggle label="Mostrar data" checked={template.showDate} onChange={(v) => setTemplate((p) => ({ ...p, showDate: v }))} />
-              <Toggle label="Mostrar nome da comanda" checked={template.showComandaName} onChange={(v) => setTemplate((p) => ({ ...p, showComandaName: v }))} />
-              <Toggle label="Mostrar variações" checked={template.showVariations} onChange={(v) => setTemplate((p) => ({ ...p, showVariations: v }))} />
-              <Toggle label="Mostrar observações" checked={template.showNotes} onChange={(v) => setTemplate((p) => ({ ...p, showNotes: v }))} />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                onClick={handleSaveTemplate}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                Salvar modelo
-              </button>
-            </div>
-          </div>
+          </section>
         </div>
       </div>
 
-      {blockingMessage && (
-        <BlockingOverlay message={blockingMessage} />
-      )}
+      {blockingMessage && <BlockingOverlay message={blockingMessage} />}
 
-      {isModalOpen && (
-        <PrinterModal
-          systemPrinters={systemPrinters}
-          printer={editingPrinter}
+      {isPortModalOpen && (
+        <PortModal
+          port={editingPort}
+          terminals={terminals}
           onClose={() => {
-            setIsModalOpen(false)
-            setEditingPrinter(null)
+            setIsPortModalOpen(false)
+            setEditingPort(null)
           }}
-          onSave={handleSavePrinter}
+          onSave={handleSavePort}
         />
       )}
     </div>
@@ -469,151 +425,119 @@ function BlockingOverlay({ message }: { message: string }) {
   )
 }
 
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string
-  checked: boolean
-  onChange: (value: boolean) => void
-}) {
-  return (
-    <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 cursor-pointer">
-      <span className="text-sm text-foreground">{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    </label>
-  )
-}
-
-function PrinterModal({
-  systemPrinters,
-  printer,
+function PortModal({
+  port,
+  terminals,
   onClose,
   onSave,
 }: {
-  systemPrinters: SystemPrinter[]
-  printer: RegisteredPrinter | null
+  port: PrintPort | null
+  terminals: PrintTerminal[]
   onClose: () => void
-  onSave: (printer: RegisteredPrinter) => void
+  onSave: (data: {
+    name: string
+    description: string
+    active: boolean
+    sortOrder: number
+    terminalDeviceId: string
+    localPrinterName: string
+    localPrinterLabel: string
+    paperWidth: number | null
+  }) => void
 }) {
-  const [name, setName] = useState(printer?.name ?? '')
-  const [systemName, setSystemName] = useState(printer?.systemName ?? '')
-  const [paperWidth, setPaperWidth] = useState<58 | 80>(printer?.paperWidth ?? 80)
-  const [type, setType] = useState<RegisteredPrinter['type']>(printer?.type ?? 'orders')
+  const [name, setName] = useState(port?.name ?? '')
+  const [description, setDescription] = useState(port?.description ?? '')
+  const [active, setActive] = useState(port?.active ?? true)
+  const [sortOrder, setSortOrder] = useState(port?.sortOrder ?? 0)
+  const [terminalDeviceId, setTerminalDeviceId] = useState(port?.terminalDeviceId ?? '')
+  const [localPrinterName, setLocalPrinterName] = useState(port?.localPrinterName ?? '')
+  const [paperWidth, setPaperWidth] = useState<number>(port?.paperWidth ?? 80)
 
-  const selectedSystemPrinter = systemPrinters.find((p) => p.name === systemName)
+  const terminal = terminals.find((item) => item.id === terminalDeviceId)
+  const localPrinters = terminal?.localPrinters ?? []
+  const selectedPrinter = localPrinters.find((item) => item.name === localPrinterName)
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (!selectedSystemPrinter) return
-
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     onSave({
-      id: printer?.id ?? createId(),
-      name: name.trim() || selectedSystemPrinter.name,
-      systemName: selectedSystemPrinter.name,
-      driverName: selectedSystemPrinter.driverName,
-      portName: selectedSystemPrinter.portName,
+      name,
+      description,
+      active,
+      sortOrder,
+      terminalDeviceId,
+      localPrinterName,
+      localPrinterLabel: selectedPrinter ? getPrinterLabel(selectedPrinter) : localPrinterName,
       paperWidth,
-      type,
     })
   }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-2xl">
+      <div className="w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold">
-            {printer ? 'Editar impressora' : 'Nova impressora'}
-          </h2>
-
+          <h2 className="text-lg font-semibold">{port ? 'Editar port' : 'Nova port'}</h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-accent">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Nome interno</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Caixa principal"
-              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_8rem] gap-3">
+            <label className="grid gap-2 text-sm font-medium">
+              Nome da port
+              <input value={name} onChange={(event) => setName(event.target.value)} required placeholder="Ex: Port 1 / Cozinha / Bar" className="h-10 px-3 rounded-lg border border-border bg-background text-sm" />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Ordem
+              <input type="number" value={sortOrder} onChange={(event) => setSortOrder(Number(event.target.value))} className="h-10 px-3 rounded-lg border border-border bg-background text-sm" />
+            </label>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Impressora do Windows</label>
-            <select
-              value={systemName}
-              onChange={(e) => setSystemName(e.target.value)}
-              required
-              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
-            >
-              <option value="">Selecione uma impressora</option>
-              {systemPrinters.map((printer) => (
-                <option key={printer.name} value={printer.name}>
-                  {printer.name} — {printer.portName || 'Sem porta'}
-                </option>
-              ))}
-            </select>
+          <label className="grid gap-2 text-sm font-medium">
+            Descrição
+            <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ex: Impressão da cozinha" className="h-10 px-3 rounded-lg border border-border bg-background text-sm" />
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="grid gap-2 text-sm font-medium">
+              Terminal
+              <select value={terminalDeviceId} onChange={(event) => { setTerminalDeviceId(event.target.value); setLocalPrinterName('') }} className="h-10 px-3 rounded-lg border border-border bg-background text-sm">
+                <option value="">Sem terminal</option>
+                {terminals.map((terminal) => (
+                  <option key={terminal.id} value={terminal.id}>{terminal.name} · {terminal.status}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium">
+              Impressora local
+              <select value={localPrinterName} onChange={(event) => setLocalPrinterName(event.target.value)} disabled={!terminalDeviceId} className="h-10 px-3 rounded-lg border border-border bg-background text-sm disabled:opacity-50">
+                <option value="">Sem impressora</option>
+                {localPrinters.map((printer) => (
+                  <option key={printer.name} value={printer.name}>{getPrinterLabel(printer)}{printer.isDefault ? ' · padrão' : ''}</option>
+                ))}
+              </select>
+            </label>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Tipo</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as RegisteredPrinter['type'])}
-              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
-            >
-              <option value="orders">Pedidos</option>
-              <option value="kitchen">Cozinha</option>
-              <option value="bar">Bar</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Largura do papel</label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  checked={paperWidth === 58}
-                  onChange={() => setPaperWidth(58)}
-                />
-                58mm
-              </label>
-
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  checked={paperWidth === 80}
-                  onChange={() => setPaperWidth(80)}
-                />
-                80mm
-              </label>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="grid gap-2 text-sm font-medium">
+              Largura do papel
+              <select value={paperWidth} onChange={(event) => setPaperWidth(Number(event.target.value))} className="h-10 px-3 rounded-lg border border-border bg-background text-sm">
+                <option value={58}>58mm</option>
+                <option value={80}>80mm</option>
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 cursor-pointer mt-7">
+              <span className="text-sm text-foreground">Port ativa</span>
+              <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
+            </label>
           </div>
 
           <div className="flex justify-end gap-2 pt-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-border hover:bg-accent"
-            >
-              Cancelar
-            </button>
-
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-border hover:bg-accent">Cancelar</button>
+            <button type="submit" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
+              <Save className="h-4 w-4" />
               Salvar
             </button>
           </div>
