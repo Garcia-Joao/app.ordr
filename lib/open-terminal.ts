@@ -1,67 +1,84 @@
-const TERMINAL_PROTOCOL_URL = 'ordr-terminal://open'
-const TERMINAL_FALLBACK_URL = '/terminal'
+import { apiFetch } from '@/lib/api/client'
 
-function getApiBaseUrl() {
-  return (process.env.NEXT_PUBLIC_API_URL || 'https://api.panelordr.com.br').replace(/\/+$/, '')
+type TerminalLaunchTokenResponse = {
+  launchToken: string
 }
 
-async function createTerminalLaunchToken() {
-  const response = await fetch(`${getApiBaseUrl()}/auth/terminal-launch-token`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
+let openingTerminal = false
+let lastOpenStartedAt = 0
 
-  const data = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(data?.error || 'Erro ao preparar abertura do terminal.')
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
   }
 
-  if (!data?.launchToken) {
-    throw new Error('Token do terminal não foi retornado.')
-  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
-  return String(data.launchToken)
+async function getTerminalLaunchToken() {
+  try {
+    const result = await apiFetch<TerminalLaunchTokenResponse>('/auth/terminal-launch-token', {
+      method: 'POST',
+    })
+
+    return result.launchToken || null
+  } catch (error) {
+    // Do not block opening the terminal because of a token failure.
+    // If the terminal is already running/logged in, it only needs to be focused.
+    console.warn('[ORDR] Failed to create terminal launch token:', error)
+    return null
+  }
 }
 
 export async function openOrdrTerminalWithFallback() {
   if (typeof window === 'undefined') return
 
+  const now = Date.now()
+
+  if (openingTerminal || now - lastOpenStartedAt < 1800) {
+    return
+  }
+
+  openingTerminal = true
+  lastOpenStartedAt = now
+
+  const fallbackUrl = '/terminal'
+  const requestId = createRequestId()
+  const launchToken = await getTerminalLaunchToken()
+
+  const params = new URLSearchParams({ requestId })
+
+  if (launchToken) {
+    params.set('launchToken', launchToken)
+  }
+
+  const protocolUrl = `ordr-terminal://open?${params.toString()}`
   let didLeavePage = false
 
   const markAsOpened = () => {
     didLeavePage = true
   }
 
-  const markAsHidden = () => {
-    if (document.hidden) {
-      didLeavePage = true
-    }
-  }
-
   window.addEventListener('blur', markAsOpened, { once: true })
-  document.addEventListener('visibilitychange', markAsHidden, { once: true })
 
-  try {
-    const launchToken = await createTerminalLaunchToken()
-    const protocolUrl = `${TERMINAL_PROTOCOL_URL}?launchToken=${encodeURIComponent(launchToken)}`
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.hidden) {
+        didLeavePage = true
+      }
+    },
+    { once: true }
+  )
 
-    window.location.href = protocolUrl
-  } catch (error) {
-    console.error('open terminal error:', error)
-    window.location.href = TERMINAL_FALLBACK_URL
-    return
-  }
+  window.location.href = protocolUrl
 
   window.setTimeout(() => {
     window.removeEventListener('blur', markAsOpened)
-    document.removeEventListener('visibilitychange', markAsHidden)
+    openingTerminal = false
 
     if (!didLeavePage) {
-      window.location.href = TERMINAL_FALLBACK_URL
+      window.location.href = fallbackUrl
     }
   }, 1800)
 }
