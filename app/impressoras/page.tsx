@@ -21,6 +21,7 @@ import {
   type PrintPort,
   type PrintTerminal,
 } from '@/lib/api/printers'
+import { openOrdrTerminalWithFallback } from '@/lib/open-terminal'
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—'
@@ -156,7 +157,7 @@ export default function ImpressorasPage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={openTerminal}
+            onClick={openOrdrTerminalWithFallback}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors"
           >
             <MonitorCheck className="h-4 w-4" />
