@@ -28,7 +28,7 @@ import {
 } from '@/lib/api/printers'
 import { openOrdrTerminalWithFallback } from '@/lib/open-terminal'
 
-const TERMINAL_ONLINE_THRESHOLD_MS = 2 * 60 * 1000
+const TERMINAL_ONLINE_THRESHOLD_MS = 45 * 1000
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—'
