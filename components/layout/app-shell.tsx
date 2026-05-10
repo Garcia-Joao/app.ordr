@@ -8,7 +8,7 @@ import { AccountMenu } from './account-menu'
 import { AppToolbar } from './app-toolbar'
 import { MobileBottomNav } from './mobile-bottom-nav'
 import { OrdrLoading } from '@/components/ui/ordr-loading'
-import { AlertTriangle, Building2, CalendarClock, ChevronDown, ChevronUp, FlaskConical, Settings } from 'lucide-react'
+import { AlertTriangle, Building2, CalendarClock, FlaskConical, Settings, X } from 'lucide-react'
 import {
   EditAccountModal,
   type EditableAccountData,
@@ -48,7 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isCheckingSession, setIsCheckingSession] = useState(!isPublicRoute)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSavingAccount, setIsSavingAccount] = useState(false)
-  const [isLicenseAlertCollapsed, setIsLicenseAlertCollapsed] = useState(false)
+  const [isLicenseAlertDismissed, setIsLicenseAlertDismissed] = useState(false)
 
   useEffect(() => {
     if (isPublicRoute) {
@@ -65,11 +65,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => clearInterval(timer)
   }, [isPublicRoute])
 
-  useEffect(() => {
-    if (isPublicRoute || typeof window === 'undefined') return
-
-    setIsLicenseAlertCollapsed(localStorage.getItem('ordr-license-alert-collapsed') === 'true')
-  }, [isPublicRoute])
 
   useEffect(() => {
     if (isPublicRoute) return
@@ -233,12 +228,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isCurrentCompanyTest = Boolean(currentCompany?.isTest)
 
-  function handleToggleLicenseAlert() {
-    setIsLicenseAlertCollapsed((current) => {
-      const next = !current
-      localStorage.setItem('ordr-license-alert-collapsed', String(next))
-      return next
-    })
+  const licenseAlertDismissKey = useMemo(() => {
+    if (!currentCompany?.id || !currentCompany?.licenseEndsAt) return null
+    return `ordr-license-alert-dismissed:${currentCompany.id}:${currentCompany.licenseEndsAt}`
+  }, [currentCompany?.id, currentCompany?.licenseEndsAt])
+
+  useEffect(() => {
+    if (isPublicRoute || typeof window === 'undefined' || !licenseAlertDismissKey) {
+      setIsLicenseAlertDismissed(false)
+      return
+    }
+
+    setIsLicenseAlertDismissed(localStorage.getItem(licenseAlertDismissKey) === 'true')
+  }, [isPublicRoute, licenseAlertDismissKey])
+
+  function handleDismissLicenseAlert() {
+    setIsLicenseAlertDismissed(true)
+
+    if (licenseAlertDismissKey && typeof window !== 'undefined') {
+      localStorage.setItem(licenseAlertDismissKey, 'true')
+    }
   }
 
   function formatLicenseDate(value?: string | null) {
@@ -423,7 +432,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            {isLicenseExpiringSoon && (
+            {isLicenseExpiringSoon && !isLicenseAlertDismissed && (
               <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 dark:text-amber-200 lg:px-6">
                 <div className="mx-auto max-w-7xl rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 shadow-sm">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -435,43 +444,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         <p className="text-sm font-black uppercase tracking-[0.2em]">
                           Licença perto do vencimento
                         </p>
-                        {!isLicenseAlertCollapsed && (
-                          <p className="mt-1 text-sm font-medium">
-                            A licença da empresa <strong>{currentCompany?.name}</strong> vence {licenseDaysRemaining === 0 ? 'hoje' : `em ${licenseDaysRemaining} dia(s)`}.
-                          </p>
-                        )}
+                        <p className="mt-1 text-sm font-medium">
+                          A licença da empresa <strong>{currentCompany?.name}</strong> vence {licenseDaysRemaining === 0 ? 'hoje' : `em ${licenseDaysRemaining} dia(s)`}.
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                      {!isLicenseAlertCollapsed && (
-                        <button
-                          type="button"
-                          onClick={() => router.push('/configuracoes/')}
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600"
-                        >
-                          <Settings className="h-4 w-4" />
-                          Ver licença
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => router.push('/configuracoes/')}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600"
+                      >
+                        <Settings className="h-4 w-4" />
+                        Ver licença
+                      </button>
 
                       <button
                         type="button"
-                        onClick={handleToggleLicenseAlert}
+                        onClick={handleDismissLicenseAlert}
                         className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-background/60 px-3 text-sm font-bold text-amber-900 transition hover:bg-amber-500/15 dark:text-amber-100"
-                        aria-expanded={!isLicenseAlertCollapsed}
+                        aria-label="Fechar alerta de licença"
+                        title="Fechar alerta"
                       >
-                        {isLicenseAlertCollapsed ? (
-                          <>
-                            <ChevronDown className="h-4 w-4" />
-                            Expandir
-                          </>
-                        ) : (
-                          <>
-                            <ChevronUp className="h-4 w-4" />
-                            Recolher
-                          </>
-                        )}
+                        <X className="h-4 w-4" />
+                        Fechar
                       </button>
                     </div>
                   </div>
