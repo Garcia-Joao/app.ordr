@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle,
-  Link2,
   Loader2,
   MonitorCheck,
   Plus,
@@ -96,11 +95,6 @@ export default function ImpressorasPage() {
     name: string
     description: string
     active: boolean
-    sortOrder: number
-    terminalDeviceId: string
-    localPrinterName: string
-    localPrinterLabel: string
-    paperWidth: number | null
   }) {
     try {
       setIsSaving(true)
@@ -111,11 +105,6 @@ export default function ImpressorasPage() {
         name: data.name,
         description: data.description || null,
         active: data.active,
-        sortOrder: data.sortOrder,
-        terminalDeviceId: data.terminalDeviceId || null,
-        localPrinterName: data.localPrinterName || null,
-        localPrinterLabel: data.localPrinterLabel || null,
-        paperWidth: data.paperWidth,
       }
 
       if (editingPort) {
@@ -399,7 +388,6 @@ export default function ImpressorasPage() {
       {isPortModalOpen && (
         <PortModal
           port={editingPort}
-          terminals={terminals}
           onClose={() => {
             setIsPortModalOpen(false)
             setEditingPort(null)
@@ -427,35 +415,20 @@ function BlockingOverlay({ message }: { message: string }) {
 
 function PortModal({
   port,
-  terminals,
   onClose,
   onSave,
 }: {
   port: PrintPort | null
-  terminals: PrintTerminal[]
   onClose: () => void
   onSave: (data: {
     name: string
     description: string
     active: boolean
-    sortOrder: number
-    terminalDeviceId: string
-    localPrinterName: string
-    localPrinterLabel: string
-    paperWidth: number | null
   }) => void
 }) {
   const [name, setName] = useState(port?.name ?? '')
   const [description, setDescription] = useState(port?.description ?? '')
   const [active, setActive] = useState(port?.active ?? true)
-  const [sortOrder, setSortOrder] = useState(port?.sortOrder ?? 0)
-  const [terminalDeviceId, setTerminalDeviceId] = useState(port?.terminalDeviceId ?? '')
-  const [localPrinterName, setLocalPrinterName] = useState(port?.localPrinterName ?? '')
-  const [paperWidth, setPaperWidth] = useState<number>(port?.paperWidth ?? 80)
-
-  const terminal = terminals.find((item) => item.id === terminalDeviceId)
-  const localPrinters = terminal?.localPrinters ?? []
-  const selectedPrinter = localPrinters.find((item) => item.name === localPrinterName)
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -463,75 +436,58 @@ function PortModal({
       name,
       description,
       active,
-      sortOrder,
-      terminalDeviceId,
-      localPrinterName,
-      localPrinterLabel: selectedPrinter ? getPrinterLabel(selectedPrinter) : localPrinterName,
-      paperWidth,
     })
   }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl">
+      <div className="w-full max-w-lg rounded-xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold">{port ? 'Editar port' : 'Nova port'}</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-accent">
+          <div>
+            <h2 className="text-lg font-semibold">{port ? 'Editar port' : 'Nova port'}</h2>
+            <p className="text-sm text-muted-foreground">
+              Cadastre apenas a port lógica. O vínculo com terminal e impressora local é feito na lista de ports.
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-accent" type="button">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_8rem] gap-3">
-            <label className="grid gap-2 text-sm font-medium">
-              Nome da port
-              <input value={name} onChange={(event) => setName(event.target.value)} required placeholder="Ex: Port 1 / Cozinha / Bar" className="h-10 px-3 rounded-lg border border-border bg-background text-sm" />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Ordem
-              <input type="number" value={sortOrder} onChange={(event) => setSortOrder(Number(event.target.value))} className="h-10 px-3 rounded-lg border border-border bg-background text-sm" />
-            </label>
-          </div>
+          <label className="grid gap-2 text-sm font-medium">
+            Nome da port
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+              placeholder="Ex: Port 1 / Cozinha / Bar"
+              className="h-10 px-3 rounded-lg border border-border bg-background text-sm"
+            />
+          </label>
 
           <label className="grid gap-2 text-sm font-medium">
             Descrição
-            <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ex: Impressão da cozinha" className="h-10 px-3 rounded-lg border border-border bg-background text-sm" />
+            <input
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Ex: Impressão da cozinha"
+              className="h-10 px-3 rounded-lg border border-border bg-background text-sm"
+            />
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="grid gap-2 text-sm font-medium">
-              Terminal
-              <select value={terminalDeviceId} onChange={(event) => { setTerminalDeviceId(event.target.value); setLocalPrinterName('') }} className="h-10 px-3 rounded-lg border border-border bg-background text-sm">
-                <option value="">Sem terminal</option>
-                {terminals.map((terminal) => (
-                  <option key={terminal.id} value={terminal.id}>{terminal.name} · {terminal.status}</option>
-                ))}
-              </select>
-            </label>
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-3 cursor-pointer">
+            <div>
+              <span className="text-sm font-medium text-foreground">Port ativa</span>
+              <p className="text-xs text-muted-foreground">
+                Ports inativas continuam cadastradas, mas não devem ser usadas para novos jobs.
+              </p>
+            </div>
+            <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
+          </label>
 
-            <label className="grid gap-2 text-sm font-medium">
-              Impressora local
-              <select value={localPrinterName} onChange={(event) => setLocalPrinterName(event.target.value)} disabled={!terminalDeviceId} className="h-10 px-3 rounded-lg border border-border bg-background text-sm disabled:opacity-50">
-                <option value="">Sem impressora</option>
-                {localPrinters.map((printer) => (
-                  <option key={printer.name} value={printer.name}>{getPrinterLabel(printer)}{printer.isDefault ? ' · padrão' : ''}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="grid gap-2 text-sm font-medium">
-              Largura do papel
-              <select value={paperWidth} onChange={(event) => setPaperWidth(Number(event.target.value))} className="h-10 px-3 rounded-lg border border-border bg-background text-sm">
-                <option value={58}>58mm</option>
-                <option value={80}>80mm</option>
-              </select>
-            </label>
-            <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 cursor-pointer mt-7">
-              <span className="text-sm text-foreground">Port ativa</span>
-              <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
-            </label>
+          <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-3 text-sm text-muted-foreground">
+            Depois de salvar, selecione na lista qual terminal Electron e qual impressora local esta port deve usar.
           </div>
 
           <div className="flex justify-end gap-2 pt-3">
