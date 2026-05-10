@@ -44,6 +44,24 @@ function createTimeoutSignal(timeoutMs: number) {
   }
 }
 
+function shouldSendJsonContentType(options?: RequestInit) {
+  const method = options?.method?.toUpperCase() ?? 'GET'
+
+  if (method === 'GET' || method === 'HEAD') {
+    return false
+  }
+
+  if (!options?.body) {
+    return false
+  }
+
+  if (typeof FormData !== 'undefined' && options.body instanceof FormData) {
+    return false
+  }
+
+  return true
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: RequestInit
@@ -53,10 +71,15 @@ export async function apiFetch<T>(
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const url = `${apiUrl}${normalizedPath}`
 
-  const isFormData =
-    typeof FormData !== 'undefined' && options?.body instanceof FormData
-
   const timeout = createTimeoutSignal(REQUEST_TIMEOUT_MS)
+
+  const headers: HeadersInit = {
+    ...(shouldSendJsonContentType(options)
+      ? { 'Content-Type': 'application/json' }
+      : {}),
+    ...(companyId ? { 'x-company-id': companyId } : {}),
+    ...(options?.headers || {}),
+  }
 
   try {
     console.log('[apiFetch]', {
@@ -66,17 +89,14 @@ export async function apiFetch<T>(
       path: normalizedPath,
       hasCompanyId: Boolean(companyId),
       hasEnvApiUrl: Boolean(process.env.NEXT_PUBLIC_API_URL),
+      sendsContentType: Boolean((headers as Record<string, string>)['Content-Type']),
     })
 
     const response = await fetch(url, {
       credentials: 'include',
       ...options,
       signal: timeout.signal,
-      headers: {
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...(companyId ? { 'x-company-id': companyId } : {}),
-        ...(options?.headers || {}),
-      },
+      headers,
     })
 
     let data: any = null
