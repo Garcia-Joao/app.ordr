@@ -1,20 +1,23 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
+import AppShell from '@/components/layout/app-shell'
 import './globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
+const _geist = Geist({ subsets: ['latin'] })
+const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-})
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#dd7c12',
+}
 
 export const metadata: Metadata = {
-  title: 'ORDR',
-  description: 'ORDR PDV',
+  title: 'Ordr - Point of Sale',
+  description: 'Fast order taking and ticket printing for bars and events',
+  generator: 'v0.app',
   icons: {
     icon: [
       {
@@ -25,21 +28,26 @@ export const metadata: Metadata = {
         url: '/ordr-icon.svg',
         type: 'image/svg+xml',
       },
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      },
     ],
     shortcut: '/favicon.ico',
-    apple: '/ordr-icon.svg',
+    apple: '/apple-icon.png',
   },
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="pt-BR">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
+    <html lang="pt-BR" className="dark bg-background">
+      <body className="font-sans antialiased min-h-screen">
+        <AppShell>{children}</AppShell>
+        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
