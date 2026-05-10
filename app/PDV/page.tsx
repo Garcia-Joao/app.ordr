@@ -27,7 +27,8 @@ import { getItemPrice } from '@/lib/pos-types'
 import { createOrder, getCategories, getProducts } from '@/lib/api'
 import { getStockProducts } from '@/lib/api/stock'
 import { getOrders } from '@/lib/api/orders'
-import type { OrderPrintMode } from '@/lib/api/orders'
+
+type PrintItemMode = 'SEPARATE' | 'GROUPED'
 
 function generateOrderId(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -205,7 +206,6 @@ export default function POSPage() {
   const [currentComandaNumber, setCurrentComandaNumber] = useState<number | null>(null)
   const [currentComandaName, setCurrentComandaName] = useState('')
   const [applyTax, setApplyTax] = useState(true)
-  const [printMode, setPrintMode] = useState<OrderPrintMode>('SEPARATE_ITEMS')
 
   const [orders, setOrders] = useState<Order[]>([])
   const [showOrdersList, setShowOrdersList] = useState(false)
@@ -216,6 +216,7 @@ export default function POSPage() {
   const [isLookingUpComanda, setIsLookingUpComanda] = useState(false)
 
   const [currentOrderObservation, setCurrentOrderObservation] = useState('')
+  const [printItemModes, setPrintItemModes] = useState<Record<string, PrintItemMode>>({})
 
   const REQUIRE_COMANDA_STORAGE_KEY = 'ordr-settings-require-comanda'
   const [requireComanda, setRequireComanda] = useState(true)
@@ -281,6 +282,21 @@ export default function POSPage() {
   useEffect(() => {
     setCurrentOrderId(generateOrderId())
   }, [])
+  useEffect(() => {
+    setPrintItemModes((current) => {
+      const next: Record<string, PrintItemMode> = {}
+
+      for (const item of currentOrderItems) {
+        const key = getItemKey(item)
+        if (current[key] && item.quantity > 1) {
+          next[key] = current[key]
+        }
+      }
+
+      return next
+    })
+  }, [currentOrderItems])
+
 
   useEffect(() => {
     async function loadPage() {
@@ -509,6 +525,7 @@ export default function POSPage() {
     setCurrentComandaName('')
     setLinkedCustomerId(null)
     setApplyTax(true)
+    setPrintItemModes({})
   }, [isSubmittingOrder])
 
   const handleCharge = useCallback(async (paymentMethod: PaymentMethod) => {
@@ -540,7 +557,7 @@ export default function POSPage() {
       const tax = applyTax ? subtotal * taxRate : 0
       const total = subtotal + tax
 
-      const newOrder: Order & { eventDateId?: string | null; customerId?: string | null; printMode?: OrderPrintMode } = {
+      const newOrder: Order & { eventDateId?: string | null; customerId?: string | null; printItemModes?: Record<string, PrintItemMode> } = {
         id: currentOrderId,
         eventDateId: activeEventDate?.id ?? getActiveEventDateId(),
         customerId: linkedCustomerId,
@@ -554,7 +571,7 @@ export default function POSPage() {
         status: 'paid',
         createdAt: new Date(),
         paidAt: new Date(),
-        printMode,
+        printItemModes,
       }
 
       const savedOrder = await createOrder(newOrder, activeSalesEnvironmentId)
@@ -613,6 +630,7 @@ export default function POSPage() {
       setLinkedCustomerId(null)
       setCurrentOrderObservation('')
       setApplyTax(true)
+      setPrintItemModes({})
     } catch (err) {
       console.error('Erro ao enviar pedido:', err)
     } finally {
@@ -630,8 +648,8 @@ export default function POSPage() {
     isSubmittingOrder,
     requireComanda,
     currentOrderObservation,
+    printItemModes,
     linkedCustomerId,
-    printMode,
     selectedCategory,
   ])
 
@@ -750,38 +768,15 @@ export default function POSPage() {
           </div>
 
           <div className="border-b border-border bg-card px-3 py-3 sm:px-5 sm:py-4">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="relative min-w-[220px] flex-1 max-w-md sm:max-w-lg">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Buscar produto em todas as categorias..."
-                  className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setPrintMode((current) =>
-                    current === 'GROUPED' ? 'SEPARATE_ITEMS' : 'GROUPED'
-                  )
-                }
-                title={
-                  printMode === 'GROUPED'
-                    ? 'Impressão agrupada ativada'
-                    : 'Padrão: imprime quantidades separadas'
-                }
-                className={`h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${
-                  printMode === 'GROUPED'
-                    ? 'border-primary/60 bg-primary/15 text-primary'
-                    : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {printMode === 'GROUPED' ? 'Agrupado' : 'Separado'}
-              </button>
+            <div className="relative max-w-md sm:max-w-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Buscar produto em todas as categorias..."
+                className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
           </div>
 
@@ -795,7 +790,23 @@ export default function POSPage() {
           />
         </div>
 
-        <div className="hidden lg:flex">
+        <div className="hidden lg:flex lg:flex-col">
+          <PrintItemModePanel
+            items={currentOrderItems}
+            modes={printItemModes}
+            disabled={isSubmittingOrder}
+            onChange={(itemKey, mode) =>
+              setPrintItemModes((current) => ({ ...current, [itemKey]: mode }))
+            }
+            onSetAll={(mode) => {
+              const next: Record<string, PrintItemMode> = {}
+              for (const item of currentOrderItems) {
+                if (item.quantity > 1) next[getItemKey(item)] = mode
+              }
+              setPrintItemModes(next)
+            }}
+          />
+
           <OrderPanel
             items={currentOrderItems}
             orderId={currentOrderId}
@@ -860,6 +871,22 @@ export default function POSPage() {
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden">
+              <PrintItemModePanel
+                items={currentOrderItems}
+                modes={printItemModes}
+                disabled={isSubmittingOrder}
+                onChange={(itemKey, mode) =>
+                  setPrintItemModes((current) => ({ ...current, [itemKey]: mode }))
+                }
+                onSetAll={(mode) => {
+                  const next: Record<string, PrintItemMode> = {}
+                  for (const item of currentOrderItems) {
+                    if (item.quantity > 1) next[getItemKey(item)] = mode
+                  }
+                  setPrintItemModes(next)
+                }}
+              />
+
               <OrderPanel
                 items={currentOrderItems}
                 orderId={currentOrderId}
@@ -892,6 +919,109 @@ export default function POSPage() {
           onPrint={handlePrint}
         />
       )}
+    </div>
+  )
+}
+
+function PrintItemModePanel({
+  items,
+  modes,
+  disabled,
+  onChange,
+  onSetAll,
+}: {
+  items: OrderItem[]
+  modes: Record<string, PrintItemMode>
+  disabled: boolean
+  onChange: (itemKey: string, mode: PrintItemMode) => void
+  onSetAll: (mode: PrintItemMode) => void
+}) {
+  const eligibleItems = items.filter((item) => item.quantity > 1)
+
+  if (eligibleItems.length === 0) return null
+
+  return (
+    <div className="border-b border-border bg-card/95 px-3 py-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Tickets
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            Itens repetidos imprimem separados por padrão.
+          </p>
+        </div>
+
+        <div className="flex shrink-0 rounded-lg border border-border bg-background p-0.5">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onSetAll('SEPARATE')}
+            className="rounded-md px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
+            title="Imprimir uma comanda para cada unidade"
+          >
+            Separar
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onSetAll('GROUPED')}
+            className="rounded-md px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
+            title="Imprimir uma comanda agrupada por item"
+          >
+            Agrupar
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        {eligibleItems.map((item) => {
+          const itemKey = getItemKey(item)
+          const currentMode = modes[itemKey] ?? 'SEPARATE'
+
+          return (
+            <div
+              key={itemKey}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/70 px-2 py-1.5"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-foreground">
+                  {item.quantity}x {item.product.name}
+                </p>
+              </div>
+
+              <div className="flex shrink-0 rounded-md border border-border bg-card p-0.5">
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(itemKey, 'SEPARATE')}
+                  className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+                    currentMode === 'SEPARATE'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`}
+                  title="Uma comanda por unidade"
+                >
+                  1/1
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(itemKey, 'GROUPED')}
+                  className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+                    currentMode === 'GROUPED'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`}
+                  title="Uma comanda agrupada"
+                >
+                  x{item.quantity}
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

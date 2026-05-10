@@ -5,10 +5,27 @@ import {
 } from '@/lib/pos-types'
 import { apiFetch } from '@/lib/api/client'
 
-export type OrderPrintMode = 'SEPARATE_ITEMS' | 'GROUPED'
+type PrintItemMode = 'SEPARATE' | 'GROUPED'
+
+type OrderWithPrintModes = Order & {
+  eventDateId?: string | null
+  customerId?: string | null
+  printItemModes?: Record<string, PrintItemMode>
+}
+
+function getOrderItemPrintKey(item: Order['items'][number]) {
+  const selections = (item.variationSelections ?? [])
+    .map((selection) => ({
+      groupId: selection.groupId,
+      selectedOptionIds: [...selection.selectedOptionIds].sort(),
+    }))
+    .sort((a, b) => a.groupId.localeCompare(b.groupId))
+
+  return `${item.product.id}-${JSON.stringify(selections)}`
+}
 
 export async function createOrder(
-  order: Order & { eventDateId?: string | null; customerId?: string | null; printMode?: OrderPrintMode },
+  order: OrderWithPrintModes,
   salesEnvironmentId?: string | null
 ): Promise<any> {
   const payload = {
@@ -25,7 +42,6 @@ export async function createOrder(
     total: order.total,
     paymentMethod: order.paymentMethod ?? null,
     taxApplied: order.taxApplied,
-    printMode: order.printMode ?? 'SEPARATE_ITEMS',
     orderItems: order.items.map((item) => {
       const unitPrice = Number(getItemPrice(item, salesEnvironmentId) ?? 0)
 
@@ -35,6 +51,7 @@ export async function createOrder(
         unitPrice,
         totalPrice: unitPrice * item.quantity,
         notes: item.notes ?? null,
+        printMode: order.printItemModes?.[getOrderItemPrintKey(item)] ?? 'SEPARATE',
         variations: (item.variationSelections ?? []).map((selection) => {
           const group = item.product.variationGroups?.find(
             (variationGroup) => variationGroup.id === selection.groupId
