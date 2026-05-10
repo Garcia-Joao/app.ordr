@@ -4,9 +4,6 @@ import { Analytics } from '@vercel/analytics/next'
 import AppShell from '@/components/layout/app-shell'
 import './globals.css'
 
-const _geist = Geist({ subsets: ['latin'] })
-const _geistMono = Geist_Mono({ subsets: ['latin'] })
-
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -15,33 +12,29 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Ordr - Point of Sale',
-  description: 'Fast order taking and ticket printing for bars and events',
-  generator: 'v0.app',
+  title: 'ORDR',
+  description: 'ORDR PDV',
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
+        url: '/favicon.ico',
+        sizes: 'any',
       },
       {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
+        url: '/ordr-icon.svg',
         type: 'image/svg+xml',
       },
     ],
-    apple: '/apple-icon.png',
+    shortcut: '/favicon.ico',
+    apple: '/ordr-icon.svg',
   },
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
     <html lang="pt-BR" className="dark bg-background">
       <body className="font-sans antialiased min-h-screen">
