@@ -1,4 +1,4 @@
-import type { DeviceType } from './api/devices'
+import type { DeviceType, LocalPrinterInfo } from './api/devices'
 
 function hasNavigator() {
   return typeof window !== 'undefined' && typeof navigator !== 'undefined'
@@ -70,6 +70,31 @@ export function detectOS() {
   return 'Sistema desconhecido'
 }
 
+export function isElectronTerminalRuntime() {
+  return typeof window !== 'undefined' && Boolean(window.ordrTerminal?.isElectron)
+}
+
+export async function getElectronLocalPrinters(): Promise<LocalPrinterInfo[] | null> {
+  if (!isElectronTerminalRuntime()) return null
+
+  try {
+    return await window.ordrTerminal!.getPrinters()
+  } catch {
+    return null
+  }
+}
+
+export async function getElectronDeviceNameFallback() {
+  if (!isElectronTerminalRuntime()) return null
+
+  try {
+    const info = await window.ordrTerminal!.getDeviceInfo()
+    return info?.hostname ? `Terminal · ${info.hostname}` : null
+  } catch {
+    return null
+  }
+}
+
 export function getDeviceDisplayName() {
   const type = detectDeviceType()
   const browser = detectBrowser()
@@ -85,13 +110,21 @@ export function getDeviceDisplayName() {
   return [typeLabel, os, browser].filter(Boolean).join(' · ')
 }
 
-export function getDeviceHeartbeatPayload(companyId?: string | null) {
+export async function getDeviceHeartbeatPayload(companyId?: string | null) {
+  const isElectron = isElectronTerminalRuntime()
+  const electronName = isElectron ? await getElectronDeviceNameFallback() : null
+  const localPrinters = isElectron ? await getElectronLocalPrinters() : null
+
   return {
     deviceId: getStoredDeviceId(companyId),
-    name: getDeviceDisplayName(),
+    name: electronName ?? getDeviceDisplayName(),
     type: detectDeviceType(),
     browser: detectBrowser(),
     os: detectOS(),
     userAgent: hasNavigator() ? navigator.userAgent : null,
+    clientType: isElectron ? 'ELECTRON' as const : 'WEB' as const,
+    isPrintTerminal: isElectron,
+    printTerminalEnabled: isElectron,
+    localPrinters,
   }
 }

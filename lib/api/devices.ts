@@ -2,6 +2,14 @@ import { apiFetch } from './client'
 
 export type DeviceType = 'DESKTOP' | 'MOBILE' | 'TABLET' | 'UNKNOWN'
 export type DeviceStatus = 'online' | 'offline'
+export type DeviceClientType = 'WEB' | 'ELECTRON'
+
+export type LocalPrinterInfo = {
+  name: string
+  displayName?: string | null
+  description?: string | null
+  isDefault?: boolean | null
+}
 
 export type CompanyDevice = {
   id: string
@@ -11,6 +19,11 @@ export type CompanyDevice = {
   os?: string | null
   userAgent?: string | null
   ipAddress?: string | null
+  clientType?: DeviceClientType
+  isPrintTerminal?: boolean
+  printTerminalEnabled?: boolean
+  localPrinters?: LocalPrinterInfo[] | null
+  terminalApprovedAt?: string | null
   firstSeenAt: string
   lastSeenAt: string
   status: DeviceStatus
@@ -30,6 +43,10 @@ export type DeviceHeartbeatInput = {
   browser?: string | null
   os?: string | null
   userAgent?: string | null
+  clientType?: DeviceClientType
+  isPrintTerminal?: boolean
+  printTerminalEnabled?: boolean
+  localPrinters?: LocalPrinterInfo[] | null
 }
 
 export function listDevices() {

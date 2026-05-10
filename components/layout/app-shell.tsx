@@ -142,7 +142,7 @@ useEffect(() => {
     if (!currentCompany?.id) return
 
     try {
-      const payload = getDeviceHeartbeatPayload(currentCompany.id)
+      const payload = await getDeviceHeartbeatPayload(currentCompany.id)
       const result = await heartbeatDevice(payload)
 
       if (!cancelled && result.device?.id) {

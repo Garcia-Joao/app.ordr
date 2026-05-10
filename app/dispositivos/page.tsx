@@ -8,6 +8,7 @@ import {
   Laptop,
   Monitor,
   Power,
+  Printer,
   RefreshCw,
   Smartphone,
   Tablet,
@@ -63,6 +64,11 @@ function getDeviceIcon(type: DeviceType) {
   if (type === 'TABLET') return Tablet
   if (type === 'DESKTOP') return Monitor
   return Laptop
+}
+
+function getDeviceClientLabel(device: CompanyDevice) {
+  if (device.clientType === 'ELECTRON') return 'Electron Terminal'
+  return 'Web'
 }
 
 function getDeviceTypeLabel(type: DeviceType) {
@@ -126,6 +132,7 @@ export default function DispositivosPage() {
   const onlineDevices = devices.filter((device) => device.status === 'online').length
   const totalSales = devices.reduce((sum, device) => sum + device.totalSales, 0)
   const totalOrders = devices.reduce((sum, device) => sum + device.salesCount, 0)
+  const printTerminals = devices.filter((device) => device.isPrintTerminal && device.printTerminalEnabled).length
 
   const devicesByStatus = useMemo(() => {
     return [...devices].sort((a, b) => {
@@ -167,7 +174,7 @@ export default function DispositivosPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 border-b border-border bg-card/50 p-6 md:grid-cols-3">
+      <div className="grid gap-4 border-b border-border bg-card/50 p-6 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={<Power className="h-5 w-5" />}
           label="Dispositivos online"
@@ -185,6 +192,12 @@ export default function DispositivosPage() {
           label="Vendas hoje"
           value={formatCurrency(totalSales)}
           detail="Total pago hoje por dispositivo"
+        />
+        <MetricCard
+          icon={<Printer className="h-5 w-5" />}
+          label="Terminais de impressão"
+          value={`${printTerminals}`}
+          detail="Electron conectado e autorizado"
         />
       </div>
 
@@ -253,7 +266,7 @@ function DeviceCard({ device, onDelete }: { device: CompanyDevice; onDelete: () 
           <div className="min-w-0">
             <h3 className="truncate text-base font-black text-foreground">{device.name}</h3>
             <p className="truncate text-sm text-muted-foreground">
-              {getDeviceTypeLabel(device.type)}{device.os ? ` · ${device.os}` : ''}{device.browser ? ` · ${device.browser}` : ''}
+              {getDeviceTypeLabel(device.type)} · {getDeviceClientLabel(device)}{device.os ? ` · ${device.os}` : ''}{device.browser ? ` · ${device.browser}` : ''}
             </p>
           </div>
         </div>
@@ -271,6 +284,23 @@ function DeviceCard({ device, onDelete }: { device: CompanyDevice; onDelete: () 
         )}
       </div>
 
+      {device.clientType === 'ELECTRON' && (
+        <div className="mb-5 rounded-2xl border border-sky-500/25 bg-sky-500/10 p-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-black text-sky-700 dark:text-sky-300">
+            <Printer className="h-4 w-4" />
+            Terminal Electron
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {device.printTerminalEnabled
+              ? 'Este dispositivo pode receber jobs e imprimir localmente.'
+              : 'Electron detectado, mas ainda não está habilitado como terminal de impressão.'}
+          </p>
+          {device.terminalApprovedAt && (
+            <p className="mt-1 text-xs text-muted-foreground">Autorizado em {formatDateTime(device.terminalApprovedAt)}</p>
+          )}
+        </div>
+      )}
+
       <div className="mb-5 rounded-2xl border border-border bg-background p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-black text-foreground">
           <UserRound className="h-4 w-4 text-primary" />
@@ -281,6 +311,29 @@ function DeviceCard({ device, onDelete }: { device: CompanyDevice; onDelete: () 
           <p className="mt-1 text-xs text-muted-foreground">@{device.currentUser.username}</p>
         )}
       </div>
+
+      {device.localPrinters && device.localPrinters.length > 0 && (
+        <div className="mb-5 rounded-2xl border border-border bg-background p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-black text-foreground">
+            <Printer className="h-4 w-4 text-primary" />
+            Impressoras locais
+          </div>
+          <div className="space-y-2">
+            {device.localPrinters.slice(0, 4).map((printer) => (
+              <div key={printer.name} className="rounded-xl border border-border bg-card px-3 py-2">
+                <p className="truncate text-sm font-bold text-foreground">
+                  {printer.displayName || printer.name}
+                  {printer.isDefault ? ' · padrão' : ''}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{printer.name}</p>
+              </div>
+            ))}
+            {device.localPrinters.length > 4 && (
+              <p className="text-xs font-semibold text-muted-foreground">+{device.localPrinters.length - 4} impressora(s)</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <InfoTile label="Pedidos hoje" value={`${device.salesCount}`} />
