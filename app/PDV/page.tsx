@@ -27,6 +27,7 @@ import { getItemPrice } from '@/lib/pos-types'
 import { createOrder, getCategories, getProducts } from '@/lib/api'
 import { getStockProducts } from '@/lib/api/stock'
 import { getOrders } from '@/lib/api/orders'
+import type { OrderPrintMode } from '@/lib/api/orders'
 
 function generateOrderId(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -204,6 +205,7 @@ export default function POSPage() {
   const [currentComandaNumber, setCurrentComandaNumber] = useState<number | null>(null)
   const [currentComandaName, setCurrentComandaName] = useState('')
   const [applyTax, setApplyTax] = useState(true)
+  const [printMode, setPrintMode] = useState<OrderPrintMode>('SEPARATE_ITEMS')
 
   const [orders, setOrders] = useState<Order[]>([])
   const [showOrdersList, setShowOrdersList] = useState(false)
@@ -538,7 +540,7 @@ export default function POSPage() {
       const tax = applyTax ? subtotal * taxRate : 0
       const total = subtotal + tax
 
-      const newOrder: Order & { eventDateId?: string | null; customerId?: string | null } = {
+      const newOrder: Order & { eventDateId?: string | null; customerId?: string | null; printMode?: OrderPrintMode } = {
         id: currentOrderId,
         eventDateId: activeEventDate?.id ?? getActiveEventDateId(),
         customerId: linkedCustomerId,
@@ -552,6 +554,7 @@ export default function POSPage() {
         status: 'paid',
         createdAt: new Date(),
         paidAt: new Date(),
+        printMode,
       }
 
       const savedOrder = await createOrder(newOrder, activeSalesEnvironmentId)
@@ -628,6 +631,7 @@ export default function POSPage() {
     requireComanda,
     currentOrderObservation,
     linkedCustomerId,
+    printMode,
     selectedCategory,
   ])
 
@@ -746,15 +750,38 @@ export default function POSPage() {
           </div>
 
           <div className="border-b border-border bg-card px-3 py-3 sm:px-5 sm:py-4">
-            <div className="relative max-w-md sm:max-w-lg">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Buscar produto em todas as categorias..."
-                className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="relative min-w-[220px] flex-1 max-w-md sm:max-w-lg">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Buscar produto em todas as categorias..."
+                  className="w-full h-10 pl-10 pr-4 rounded-lg bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setPrintMode((current) =>
+                    current === 'GROUPED' ? 'SEPARATE_ITEMS' : 'GROUPED'
+                  )
+                }
+                title={
+                  printMode === 'GROUPED'
+                    ? 'Impressão agrupada ativada'
+                    : 'Padrão: imprime quantidades separadas'
+                }
+                className={`h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                  printMode === 'GROUPED'
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {printMode === 'GROUPED' ? 'Agrupado' : 'Separado'}
+              </button>
             </div>
           </div>
 

@@ -5,8 +5,10 @@ import {
 } from '@/lib/pos-types'
 import { apiFetch } from '@/lib/api/client'
 
+export type OrderPrintMode = 'SEPARATE_ITEMS' | 'GROUPED'
+
 export async function createOrder(
-  order: Order & { eventDateId?: string | null; customerId?: string | null },
+  order: Order & { eventDateId?: string | null; customerId?: string | null; printMode?: OrderPrintMode },
   salesEnvironmentId?: string | null
 ): Promise<any> {
   const payload = {
@@ -23,6 +25,7 @@ export async function createOrder(
     total: order.total,
     paymentMethod: order.paymentMethod ?? null,
     taxApplied: order.taxApplied,
+    printMode: order.printMode ?? 'SEPARATE_ITEMS',
     orderItems: order.items.map((item) => {
       const unitPrice = Number(getItemPrice(item, salesEnvironmentId) ?? 0)
 
