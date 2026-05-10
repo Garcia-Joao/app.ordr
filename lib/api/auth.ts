@@ -4,6 +4,7 @@ export type AuthCompany = {
   id: string
   name: string
   isTest: boolean
+  testSourceCompanyId?: string | null
   role: string
   systemRole?: 'ADMIN' | 'CUSTOM'
   customRoleId?: string | null

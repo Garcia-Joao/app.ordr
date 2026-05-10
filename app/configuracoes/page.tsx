@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Settings,
   Building2,
@@ -13,9 +13,11 @@ import {
   Palette,
   Trash2,
   MapPinned,
+  Copy,
+  ShieldCheck,
 } from 'lucide-react'
 import { getMe, switchCompany, type AuthCompany, type AuthUser } from '@/lib/api/auth'
-import { createTestCompany } from '@/lib/api/companies'
+import { createTestCompany, deleteTestCompany } from '@/lib/api/companies'
 import {
   getSalesEnvironments,
   createSalesEnvironment,
@@ -34,6 +36,17 @@ type SalesEnvironment = {
   updatedAt?: string | Date
 }
 
+function sortCompanies(companies: AuthCompany[]) {
+  return [...companies].sort((a, b) => {
+    if (a.isTest !== b.isTest) return a.isTest ? 1 : -1
+    return a.name.localeCompare(b.name)
+  })
+}
+
+function isCompanyAdmin(company: AuthCompany) {
+  return company.systemRole === 'ADMIN' || company.role === 'admin'
+}
+
 export default function ConfiguracoesPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [companies, setCompanies] = useState<AuthCompany[]>([])
@@ -42,7 +55,9 @@ export default function ConfiguracoesPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [copyDataToTest, setCopyDataToTest] = useState(true)
+  const [testSourceCompanyId, setTestSourceCompanyId] = useState('')
   const [isCreatingTestCompany, setIsCreatingTestCompany] = useState(false)
+  const [deletingTestCompanyId, setDeletingTestCompanyId] = useState<string | null>(null)
   const [requireComanda, setRequireComanda] = useState(true)
 
   const [salesEnvironments, setSalesEnvironments] = useState<SalesEnvironment[]>([])
@@ -57,9 +72,15 @@ export default function ConfiguracoesPage() {
     async function loadData() {
       try {
         const result = await getMe()
+        const sortedCompanies = sortCompanies(result.user.companies ?? [])
         setUser(result.user)
-        setCompanies(result.user.companies ?? [])
+        setCompanies(sortedCompanies)
         setSelectedCompanyId(result.user.companyId)
+
+        const firstAdminProductionCompany = sortedCompanies.find(
+          (company) => !company.isTest && isCompanyAdmin(company)
+        )
+        setTestSourceCompanyId(firstAdminProductionCompany?.id ?? '')
 
         const savedRequireComanda = localStorage.getItem(REQUIRE_COMANDA_STORAGE_KEY)
         if (savedRequireComanda !== null) {
@@ -96,17 +117,66 @@ export default function ConfiguracoesPage() {
   const selectedCompany =
     companies.find((company) => company.id === selectedCompanyId) || null
 
+  const adminProductionCompanies = useMemo(
+    () => companies.filter((company) => !company.isTest && isCompanyAdmin(company)),
+    [companies]
+  )
+
+  const existingTestSourceIds = useMemo(
+    () =>
+      new Set(
+        companies
+          .filter((company) => company.isTest && company.testSourceCompanyId)
+          .map((company) => company.testSourceCompanyId as string)
+      ),
+    [companies]
+  )
+
+  const productionCompaniesWithoutTest = useMemo(
+    () =>
+      adminProductionCompanies.filter(
+        (company) => !existingTestSourceIds.has(company.id)
+      ),
+    [adminProductionCompanies, existingTestSourceIds]
+  )
+
+  const canShowCreateTestCompany = productionCompaniesWithoutTest.length > 0
+
+  useEffect(() => {
+    if (
+      testSourceCompanyId &&
+      productionCompaniesWithoutTest.some((company) => company.id === testSourceCompanyId)
+    ) {
+      return
+    }
+
+    setTestSourceCompanyId(productionCompaniesWithoutTest[0]?.id ?? '')
+  }, [productionCompaniesWithoutTest, testSourceCompanyId])
+
   const handleCreateTestCompany = async () => {
+    if (!testSourceCompanyId) {
+      alert('Escolha uma empresa base para criar o ambiente de teste.')
+      return
+    }
+
     try {
       setIsCreatingTestCompany(true)
 
-      const result = await createTestCompany(copyDataToTest)
+      const result = await createTestCompany({
+        sourceCompanyId: testSourceCompanyId,
+        copyData: copyDataToTest,
+      })
 
-      alert(`Empresa de teste criada: ${result.company.name}`)
+      alert(
+        result.alreadyExists
+          ? `A empresa de teste já existia: ${result.company.name}`
+          : `Empresa de teste criada: ${result.company.name}`
+      )
 
       const refreshed = await getMe()
+      const sortedCompanies = sortCompanies(refreshed.user.companies ?? [])
       setUser(refreshed.user)
-      setCompanies(refreshed.user.companies ?? [])
+      setCompanies(sortedCompanies)
       setSelectedCompanyId(result.company.id)
 
       localStorage.setItem('ordr-user', JSON.stringify(refreshed.user))
@@ -118,6 +188,55 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  const handleDeleteTestCompany = async (company: AuthCompany) => {
+    if (!company.isTest) return
+
+    if (!isCompanyAdmin(company)) {
+      alert('Somente administradores podem excluir uma empresa de teste.')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Atenção: isso vai excluir permanentemente a empresa de teste "${company.name}" e todos os dados dela.\n\nEssa ação não pode ser desfeita. Deseja continuar?`
+    )
+
+    if (!confirmed) return
+
+    try {
+      setDeletingTestCompanyId(company.id)
+
+      const fallbackCompany =
+        companies.find((item) => item.id === company.testSourceCompanyId) ??
+        companies.find((item) => !item.isTest && isCompanyAdmin(item)) ??
+        companies.find((item) => !item.isTest)
+
+      if (user?.companyId === company.id && fallbackCompany) {
+        const switched = await switchCompany(fallbackCompany.id)
+        setUser(switched.user)
+        setSelectedCompanyId(switched.user.companyId)
+        localStorage.setItem('ordr-user', JSON.stringify(switched.user))
+      }
+
+      await deleteTestCompany(company.id)
+
+      const refreshed = await getMe()
+      const sortedCompanies = sortCompanies(refreshed.user.companies ?? [])
+      setUser(refreshed.user)
+      setCompanies(sortedCompanies)
+
+      if (selectedCompanyId === company.id) {
+        setSelectedCompanyId(refreshed.user.companyId)
+      }
+
+      localStorage.setItem('ordr-user', JSON.stringify(refreshed.user))
+    } catch (error: any) {
+      console.error('Erro ao excluir empresa de teste:', error)
+      alert(error?.message || 'Erro ao excluir empresa de teste')
+    } finally {
+      setDeletingTestCompanyId(null)
+    }
+  }
+
   const handleSave = async () => {
     try {
       setIsSaving(true)
@@ -125,11 +244,18 @@ export default function ConfiguracoesPage() {
 
       localStorage.setItem(REQUIRE_COMANDA_STORAGE_KEY, String(requireComanda))
 
+      const targetCompany = companies.find((company) => company.id === selectedCompanyId)
+      if (targetCompany?.isTest && !isCompanyAdmin(targetCompany)) {
+        alert('Somente administradores podem entrar em empresas de teste.')
+        return
+      }
+
       if (selectedCompanyId && selectedCompanyId !== user?.companyId) {
         const result = await switchCompany(selectedCompanyId)
+        const sortedCompanies = sortCompanies(result.user.companies ?? [])
 
         setUser(result.user)
-        setCompanies(result.user.companies ?? [])
+        setCompanies(sortedCompanies)
         setSelectedCompanyId(result.user.companyId)
 
         localStorage.setItem('ordr-user', JSON.stringify(result.user))
@@ -249,7 +375,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl space-y-6">
+        <div className="max-w-5xl space-y-6">
           <section className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -266,52 +392,93 @@ export default function ConfiguracoesPage() {
             <div className="space-y-3">
               {companies.map((company) => {
                 const isSelected = company.id === selectedCompanyId
+                const isCurrent = user?.companyId === company.id
+                const isDeleting = deletingTestCompanyId === company.id
+                const canEnterTestCompany = !company.isTest || isCompanyAdmin(company)
+                const canDeleteTestCompany = company.isTest && isCompanyAdmin(company)
 
                 return (
-                  <label
+                  <div
                     key={company.id}
-                    className={`flex items-center justify-between rounded-xl border p-4 cursor-pointer transition-colors ${
+                    className={`rounded-xl border p-4 transition-colors ${
                       isSelected
                         ? 'border-primary bg-primary/5'
                         : 'border-border bg-secondary/30 hover:bg-secondary/50'
-                    }`}
+                    } ${!canEnterTestCompany ? 'opacity-60' : ''}`}
                   >
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="radio"
-                        name="active-company"
-                        value={company.id}
-                        checked={isSelected}
-                        onChange={() => setSelectedCompanyId(company.id)}
-                        className="h-4 w-4"
-                      />
+                    <div className="flex items-start justify-between gap-4">
+                      <label className="flex items-start gap-4 cursor-pointer flex-1 min-w-0">
+                        <input
+                          type="radio"
+                          name="active-company"
+                          value={company.id}
+                          checked={isSelected}
+                          disabled={!canEnterTestCompany}
+                          onChange={() => setSelectedCompanyId(company.id)}
+                          className="h-4 w-4 mt-1"
+                        />
 
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">
-                            {company.name}
-                          </span>
-
-                          {company.isTest && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-warning/15 text-warning">
-                              <FlaskConical className="h-3.5 w-3.5" />
-                              Ambiente de teste
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-foreground">
+                              {company.name}
                             </span>
+
+                            {company.isTest && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-warning/15 text-warning">
+                                <FlaskConical className="h-3.5 w-3.5" />
+                                Ambiente de teste
+                              </span>
+                            )}
+
+                            {isCompanyAdmin(company) && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                Admin
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Papel neste ambiente:{' '}
+                            {company.systemRole === 'CUSTOM'
+                              ? company.customRoleName || 'Role customizada'
+                              : company.role}
+                          </p>
+
+                          {company.isTest && !canEnterTestCompany && (
+                            <p className="text-xs text-warning mt-2">
+                              Somente administradores podem entrar em empresas de teste.
+                            </p>
                           )}
                         </div>
+                      </label>
 
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Papel neste ambiente: {company.role}
-                        </p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isCurrent && (
+                          <span className="text-sm font-medium text-primary">
+                            Atual
+                          </span>
+                        )}
+
+                        {canDeleteTestCompany && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTestCompany(company)}
+                            disabled={isDeleting}
+                            className="h-9 px-3 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 text-sm"
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                            Excluir teste
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    {user?.companyId === company.id && (
-                      <span className="text-sm font-medium text-primary">
-                        Atual
-                      </span>
-                    )}
-                  </label>
+                  </div>
                 )
               })}
             </div>
@@ -359,9 +526,6 @@ export default function ConfiguracoesPage() {
                       onChange={(e) => setNewEnvironmentColor(e.target.value)}
                       className="h-6 w-8 border-0 bg-transparent p-0"
                     />
-                    <span className="text-sm text-muted-foreground">
-                      {newEnvironmentColor.toUpperCase()}
-                    </span>
                   </div>
                 </div>
 
@@ -484,9 +648,9 @@ export default function ConfiguracoesPage() {
 
             {selectedCompany ? (
               <div className="rounded-xl bg-secondary/40 border border-border p-4 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <span className="text-sm text-muted-foreground">Empresa selecionada</span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-foreground text-right">
                     {selectedCompany.name}
                   </span>
                 </div>
@@ -516,58 +680,117 @@ export default function ConfiguracoesPage() {
             )}
           </section>
 
-          <section className="bg-card rounded-xl border border-border p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-warning/10 rounded-lg">
-                <FlaskConical className="h-5 w-5 text-warning" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Ambiente de teste
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Crie uma empresa de teste com base na empresa atual
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
+          {canShowCreateTestCompany ? (
+            <section className="bg-card rounded-xl border border-border p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-warning/10 rounded-lg">
+                  <FlaskConical className="h-5 w-5 text-warning" />
+                </div>
                 <div>
-                  <span className="text-foreground font-medium">
-                    Copiar estrutura da empresa atual
-                  </span>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Ambiente de teste
+                  </h2>
                   <p className="text-sm text-muted-foreground">
-                    Copia categorias, produtos, variações e ambientes. Pedidos não são copiados.
+                    Crie uma empresa de teste em branco ou copiando a estrutura de uma empresa administrada por você
                   </p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={copyDataToTest}
-                  onChange={(e) => setCopyDataToTest(e.target.checked)}
-                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
-                />
-              </label>
+              </div>
 
-              <button
-                onClick={handleCreateTestCompany}
-                disabled={isCreatingTestCompany || !user?.companyId}
-                className="flex items-center gap-2 px-4 py-3 rounded-lg font-medium bg-warning text-black hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreatingTestCompany ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Criando ambiente de teste...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-5 w-5" />
-                    Criar empresa de teste
-                  </>
-                )}
-              </button>
-            </div>
-          </section>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border bg-secondary/30 p-4">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Empresa base
+                  </label>
+                  <select
+                    value={testSourceCompanyId}
+                    onChange={(e) => setTestSourceCompanyId(e.target.value)}
+                    className="w-full h-11 px-3 rounded-lg bg-background border border-border text-foreground"
+                  >
+                    {productionCompaniesWithoutTest.map((company) => (
+                      <option key={company.id} value={company.id} className="bg-background text-foreground">
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    A empresa teste será vinculada à empresa base escolhida.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCopyDataToTest(false)}
+                    className={`text-left rounded-xl border p-4 transition-colors ${
+                      !copyDataToTest
+                        ? 'border-warning bg-warning/10'
+                        : 'border-border bg-secondary/30 hover:bg-secondary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 font-medium text-foreground">
+                      <FlaskConical className="h-4 w-4 text-warning" />
+                      Criar em branco
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Cria apenas a empresa teste e o ambiente Default, sem copiar produtos e categorias.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCopyDataToTest(true)}
+                    className={`text-left rounded-xl border p-4 transition-colors ${
+                      copyDataToTest
+                        ? 'border-warning bg-warning/10'
+                        : 'border-border bg-secondary/30 hover:bg-secondary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 font-medium text-foreground">
+                      <Copy className="h-4 w-4 text-warning" />
+                      Copiar estrutura
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Copia categorias, produtos e variações da empresa base. Pedidos não são copiados.
+                    </p>
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleCreateTestCompany}
+                  disabled={isCreatingTestCompany || !testSourceCompanyId}
+                  className="flex items-center gap-2 px-4 py-3 rounded-lg font-medium bg-warning text-black hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingTestCompany ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Criando ambiente de teste...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-5 w-5" />
+                      Criar empresa de teste
+                    </>
+                  )}
+                </button>
+              </div>
+            </section>
+          ) : adminProductionCompanies.length > 0 ? (
+            <section className="bg-card rounded-xl border border-border p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-success/10 rounded-lg">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Ambientes de teste já criados
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Todas as empresas em que você é administrador já possuem uma empresa de teste.
+                  </p>
+                </div>
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </div>
