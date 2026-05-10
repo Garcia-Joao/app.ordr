@@ -33,6 +33,45 @@ function normalizePathname(pathname: string | null) {
   return pathname
 }
 
+function isAuthSessionError(error: unknown) {
+  const message = String(error instanceof Error ? error.message : error ?? '')
+
+  return (
+    message.includes('UNAUTHORIZED') ||
+    message.includes('Unauthorized') ||
+    message.includes('401') ||
+    message.includes('Não autenticado') ||
+    message.includes('Sessão expirada')
+  )
+}
+
+function restoreCachedSession() {
+  if (typeof window === 'undefined') return null
+
+  const cachedUser = localStorage.getItem('ordr-user')
+  if (!cachedUser) return null
+
+  try {
+    const parsedUser = JSON.parse(cachedUser)
+
+    return {
+      user: {
+        name: parsedUser.name ?? null,
+        username: parsedUser.username,
+        phone: parsedUser.phone ?? null,
+        photoBase64: parsedUser.photoBase64 ?? null,
+        role: parsedUser.role ?? null,
+      } satisfies ShellUser,
+      company:
+        parsedUser.currentCompany ??
+        parsedUser.companies?.find((company: AuthCompany) => company.id === parsedUser.companyId) ??
+        null,
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -112,13 +151,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setCurrentCompany(result.user.currentCompany ?? result.user.companies?.find((company) => company.id === result.user.companyId) ?? null)
         localStorage.setItem('ordr-user', JSON.stringify(result.user))
         window.dispatchEvent(new Event('ordr-user-updated'))
-      } catch {
+      } catch (error) {
         if (!isMounted) return
 
-        setCurrentCompany(null)
-        localStorage.removeItem('ordr-user')
-        window.dispatchEvent(new Event('ordr-user-updated'))
-        router.replace('/login/')
+        if (isAuthSessionError(error)) {
+          setCurrentUser(null)
+          setCurrentCompany(null)
+          localStorage.removeItem('ordr-user')
+          window.dispatchEvent(new Event('ordr-user-updated'))
+          router.replace('/login/')
+          return
+        }
+
+        console.error('Erro ao verificar sessão:', error)
+
+        const cachedSession = restoreCachedSession()
+
+        if (cachedSession) {
+          setCurrentUser(cachedSession.user)
+          setCurrentCompany(cachedSession.company)
+          return
+        }
+
+        // Não redireciona por erro temporário/API quebrada.
+        // Isso evita loop PDV <-> login quando algum endpoint falha no refresh.
       } finally {
         if (isMounted) {
           setIsCheckingSession(false)
@@ -133,34 +189,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [isPublicRoute, router])
 
-useEffect(() => {
-  if (isPublicRoute || !currentCompany?.id || currentCompany.licenseActive === false) return
+  useEffect(() => {
+    if (isPublicRoute || !currentCompany?.id || currentCompany.licenseActive === false) return
 
-  let cancelled = false
+    let cancelled = false
 
-  async function sendHeartbeat() {
-    if (!currentCompany?.id) return
+    async function sendHeartbeat() {
+      if (!currentCompany?.id) return
 
-    try {
-      const payload = await getDeviceHeartbeatPayload(currentCompany.id)
-      const result = await heartbeatDevice(payload)
+      try {
+        const payload = await getDeviceHeartbeatPayload(currentCompany.id)
+        const result = await heartbeatDevice(payload)
 
-      if (!cancelled && result.device?.id) {
-        setStoredDeviceId(currentCompany.id, result.device.id)
+        if (!cancelled && result.device?.id) {
+          setStoredDeviceId(currentCompany.id, result.device.id)
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar dispositivo:', error)
       }
-    } catch (error) {
-      console.error('Erro ao atualizar dispositivo:', error)
     }
-  }
 
-  sendHeartbeat()
-  const interval = window.setInterval(sendHeartbeat, 45_000)
+    sendHeartbeat()
+    const interval = window.setInterval(sendHeartbeat, 45_000)
 
-  return () => {
-    cancelled = true
-    window.clearInterval(interval)
-  }
-}, [currentCompany?.id, currentCompany?.licenseActive, isPublicRoute])
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [currentCompany?.id, currentCompany?.licenseActive, isPublicRoute])
 
   const handleLogout = useCallback(async () => {
     try {
