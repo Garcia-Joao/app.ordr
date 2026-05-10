@@ -238,6 +238,18 @@ export function AppToolbar({
     )
   }, [authUser])
 
+  const currentCompanyLicenseDaysRemaining =
+    typeof currentCompany?.licenseDaysRemaining === 'number'
+      ? currentCompany.licenseDaysRemaining
+      : null
+
+  const isCurrentCompanyLicenseExpiringSoon = Boolean(
+    currentCompany?.licenseActive === true &&
+      currentCompanyLicenseDaysRemaining !== null &&
+      currentCompanyLicenseDaysRemaining >= 0 &&
+      currentCompanyLicenseDaysRemaining < 7
+  )
+
   function formatEventDateTimeRange(eventDate: EventDate) {
     const start = new Date(eventDate.startAt)
     const end = eventDate.endAt ? new Date(eventDate.endAt) : null
@@ -796,6 +808,11 @@ export function AppToolbar({
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-destructive">
                   <AlertTriangle className="h-3 w-3" />
                   Licença
+                </span>
+              ) : isCurrentCompanyLicenseExpiringSoon ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="h-3 w-3" />
+                  {currentCompanyLicenseDaysRemaining === 0 ? 'Hoje' : `${currentCompanyLicenseDaysRemaining}d`}
                 </span>
               ) : currentCompany.licenseActive === true ? (
                 <span className="hidden shrink-0 items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-green-600 xl:flex">

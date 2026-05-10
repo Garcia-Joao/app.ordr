@@ -212,6 +212,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     currentCompany && currentCompany.licenseActive === false
   )
 
+  const licenseDaysRemaining =
+    typeof currentCompany?.licenseDaysRemaining === 'number'
+      ? currentCompany.licenseDaysRemaining
+      : null
+
+  const isLicenseExpiringSoon = Boolean(
+    currentCompany?.licenseActive === true &&
+      licenseDaysRemaining !== null &&
+      licenseDaysRemaining >= 0 &&
+      licenseDaysRemaining < 7
+  )
+
   function formatLicenseDate(value?: string | null) {
     if (!value) return 'Sem vencimento definido'
 
@@ -365,6 +377,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           />
 
           <main className="flex-1 min-h-0 overflow-auto pb-24 lg:pb-0">
+            {isLicenseExpiringSoon && (
+              <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 dark:text-amber-200 lg:px-6">
+                <div className="mx-auto flex max-w-7xl flex-col gap-2 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                      <AlertTriangle className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-[0.2em]">
+                        Licença perto do vencimento
+                      </p>
+                      <p className="mt-1 text-sm font-medium">
+                        A licença da empresa <strong>{currentCompany?.name}</strong> vence {licenseDaysRemaining === 0 ? 'hoje' : `em ${licenseDaysRemaining} dia(s)`}.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push('/configuracoes/')}
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Ver licença
+                  </button>
+                </div>
+              </div>
+            )}
             {children}
           </main>
 

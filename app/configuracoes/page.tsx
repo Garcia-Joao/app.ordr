@@ -144,6 +144,18 @@ export default function ConfiguracoesPage() {
   const selectedCompany =
     companies.find((company) => company.id === selectedCompanyId) || null
 
+  const selectedCompanyLicenseDaysRemaining =
+    typeof selectedCompany?.licenseDaysRemaining === 'number'
+      ? selectedCompany.licenseDaysRemaining
+      : null
+
+  const isSelectedCompanyLicenseExpiringSoon = Boolean(
+    selectedCompany?.licenseActive === true &&
+      selectedCompanyLicenseDaysRemaining !== null &&
+      selectedCompanyLicenseDaysRemaining >= 0 &&
+      selectedCompanyLicenseDaysRemaining < 7
+  )
+
   const adminProductionCompanies = useMemo(
     () => companies.filter((company) => !company.isTest && isCompanyAdmin(company)),
     [companies]
@@ -596,6 +608,20 @@ export default function ConfiguracoesPage() {
                 )}
               </div>
             </div>
+
+            {isSelectedCompanyLicenseExpiringSoon && (
+              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+                  <div>
+                    <p className="font-bold">Licença perto do vencimento</p>
+                    <p className="mt-1">
+                      Esta licença vence {selectedCompanyLicenseDaysRemaining === 0 ? 'hoje' : `em ${selectedCompanyLicenseDaysRemaining} dia(s)`}. Renove a licença para evitar o bloqueio automático da empresa.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {!selectedCompany?.licenseActive && (
               <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive">
