@@ -1,7 +1,13 @@
+'use client'
+
 import Link from 'next/link'
 import { MonitorDown, Printer, ShieldCheck } from 'lucide-react'
 
 export default function TerminalDownloadPage() {
+  function tryOpenTerminal() {
+    window.location.href = 'ordr-terminal://open'
+  }
+
   return (
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground">
       <section className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -72,11 +78,7 @@ export default function TerminalDownloadPage() {
               <button
                 type="button"
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-bold text-foreground transition hover:bg-muted"
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    window.location.href = 'ordr-terminal://open'
-                  }
-                }}
+                onClick={tryOpenTerminal}
               >
                 Tentar abrir novamente
               </button>

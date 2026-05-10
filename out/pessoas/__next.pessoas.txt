@@ -1,7 +1,7 @@
 1:"$Sreact.fragment"
-2:I[92825,["/_next/static/chunks/0tr.jul7wkoxj.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js"],"ClientSegmentRoot"]
-3:I[70998,["/_next/static/chunks/0tr.jul7wkoxj.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js","/_next/static/chunks/0mc7nx~f.5hrc.js"],"default"]
-4:I[39756,["/_next/static/chunks/0tr.jul7wkoxj.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js"],"default"]
-5:I[37457,["/_next/static/chunks/0tr.jul7wkoxj.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js"],"default"]
-0:{"rsc":["$","$1","c",{"children":[[["$","script","script-0",{"src":"/_next/static/chunks/0mc7nx~f.5hrc.js","async":true}]],["$","$L2",null,{"Component":"$3","slots":{"children":["$","$L4",null,{"parallelRouterKey":"children","template":["$","$L5",null,{}]}]},"serverProvidedParams":{"params":{},"promises":["$@6"]}}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"6q_DBnxSao5yGm0-4Xm2G"}
+2:I[92825,["/_next/static/chunks/0kf6y0s5l9zd8.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js"],"ClientSegmentRoot"]
+3:I[70998,["/_next/static/chunks/0kf6y0s5l9zd8.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js","/_next/static/chunks/0mc7nx~f.5hrc.js"],"default"]
+4:I[39756,["/_next/static/chunks/0kf6y0s5l9zd8.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js"],"default"]
+5:I[37457,["/_next/static/chunks/0kf6y0s5l9zd8.js","/_next/static/chunks/0bzs5i1.5yv_8.js","/_next/static/chunks/0poz672_775dy.js","/_next/static/chunks/0f96joxpoujee.js"],"default"]
+0:{"rsc":["$","$1","c",{"children":[[["$","script","script-0",{"src":"/_next/static/chunks/0mc7nx~f.5hrc.js","async":true}]],["$","$L2",null,{"Component":"$3","slots":{"children":["$","$L4",null,{"parallelRouterKey":"children","template":["$","$L5",null,{}]}]},"serverProvidedParams":{"params":{},"promises":["$@6"]}}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"g1i6m23-3_aqcQOiqyulE"}
 6:"$0:rsc:props:children:1:props:serverProvidedParams:params"
