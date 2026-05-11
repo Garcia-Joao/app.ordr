@@ -26,7 +26,7 @@ import { formatBRL, getItemPrice } from '@/lib/pos-types'
 
 import { createOrder, getCategories, getProducts } from '@/lib/api'
 import { getStockProducts } from '@/lib/api/stock'
-import { getOrders } from '@/lib/api/orders'
+import { getOrders, reprintOrderReceipt } from '@/lib/api/orders'
 
 type PrintItemMode = 'SEPARATE' | 'GROUPED'
 
@@ -791,11 +791,19 @@ export default function POSPage() {
     }
   }, [isSubmittingOrder])
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     if (isSubmittingOrder || !selectedOrder) return
 
     try {
-      printReceipt(selectedOrder)
+      const result = await reprintOrderReceipt(selectedOrder.id)
+      const failedJob = result.jobs?.find((job) => job.status === 'FAILED')
+
+      if (failedJob) {
+        alert('Recibo enviado, mas a Port Caixa/Recibos não está vinculada a uma impressora ativa.')
+        return
+      }
+
+      alert('Recibo enviado para a impressora térmica do caixa.')
     } catch (error) {
       console.error('Erro ao imprimir recibo:', error)
       alert(error instanceof Error ? error.message : 'Erro ao imprimir recibo.')

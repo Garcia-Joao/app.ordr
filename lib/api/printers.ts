@@ -49,6 +49,8 @@ export type PrintPort = {
   localPrinterName?: string | null
   localPrinterLabel?: string | null
   paperWidth?: number | null
+  isDefaultReceipt?: boolean
+  isSystem?: boolean
   createdAt?: string
   updatedAt?: string
   terminalDevice?: PrintTerminal | null

@@ -118,3 +118,10 @@ export function reprintOrderTickets(orderId: string) {
     method: 'POST',
   })
 }
+
+
+export function reprintOrderReceipt(orderId: string) {
+  return apiFetch<{ jobs: Array<{ id: string; status: string }> }>(`/orders/${orderId}/reprint-receipt`, {
+    method: 'POST',
+  })
+}

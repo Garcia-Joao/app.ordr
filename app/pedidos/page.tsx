@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import type { Order, OrderItem } from '@/lib/pos-types'
 import { formatBRL, getItemPrice } from '@/lib/pos-types'
-import { cancelOrder, getOrders, reprintOrderTickets } from '@/lib/api/orders'
+import { cancelOrder, getOrders, reprintOrderTickets, reprintOrderReceipt } from '@/lib/api/orders'
 import { canAny, getStoredUser } from '@/lib/permissions'
 import type { AuthUser } from '@/lib/api/auth'
 
@@ -100,6 +100,7 @@ export default function PedidosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isCancelling, setIsCancelling] = useState(false)
   const [isReprinting, setIsReprinting] = useState(false)
+  const [isReprintingReceipt, setIsReprintingReceipt] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid' | 'cancelled'>('all')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -207,6 +208,28 @@ export default function PedidosPage() {
       alert(error?.message || 'Erro ao reimprimir pedido')
     } finally {
       setIsReprinting(false)
+    }
+  }
+
+
+  async function handleReprintReceipt() {
+    if (!selectedOrder || selectedOrder.status === 'cancelled') return
+
+    try {
+      setIsReprintingReceipt(true)
+      const result = await reprintOrderReceipt(selectedOrder.id)
+      const failedJobs = result.jobs.filter((job) => job.status === 'FAILED')
+
+      alert(
+        failedJobs.length > 0
+          ? 'Recibo criado, mas a Port Caixa/Recibos não está vinculada a uma impressora ativa.'
+          : 'Recibo enviado para a impressora térmica do caixa.'
+      )
+    } catch (err) {
+      console.error(err)
+      alert(err instanceof Error ? err.message : 'Não foi possível reimprimir o recibo.')
+    } finally {
+      setIsReprintingReceipt(false)
     }
   }
 
@@ -537,6 +560,28 @@ export default function PedidosPage() {
                           </>
                         )}
                       </button>
+                    )}
+
+                    {selectedOrder.status !== 'cancelled' && (
+
+                      <button
+                        onClick={handleReprintReceipt}
+                        disabled={isReprintingReceipt}
+                        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isReprintingReceipt ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Reimprimindo recibo...
+                          </>
+                        ) : (
+                          <>
+                            <Printer className="h-4 w-4" />
+                            Reimprimir recibo
+                          </>
+                        )}
+                      </button>
+
                     )}
 
                     {selectedOrder.status !== 'cancelled' && canCancelOrder && (

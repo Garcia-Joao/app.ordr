@@ -303,6 +303,11 @@ export default function ImpressorasPage() {
   }
 
   async function handleDeletePort(port: PrintPort) {
+    if (port.isDefaultReceipt || port.isSystem) {
+      setError('A Port Caixa/Recibos é fixa do sistema e não pode ser removida.')
+      return
+    }
+
     const confirmed = window.confirm(
       `Remover a port "${port.name}"? Categorias e produtos ligados a ela voltarão a ficar sem port configurada.`
     )
@@ -528,6 +533,9 @@ export default function ImpressorasPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-lg font-black text-foreground">{port.name}</p>
+                          {(port.isDefaultReceipt || port.isSystem) && (
+                            <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-[11px] font-black uppercase tracking-wide text-primary">Port caixa fixa</span>
+                          )}
                           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                             {port.description || 'Sem descrição'}
                           </p>
@@ -542,7 +550,7 @@ export default function ImpressorasPage() {
                       <div className="mt-4 rounded-2xl border border-border bg-card px-3 py-3">
                         <p className="text-sm font-semibold text-foreground">{status.description}</p>
                         <div className="mt-3 grid gap-2 text-xs">
-                          <InfoLine label="Tipo" value="Port lógica" />
+                          <InfoLine label="Tipo" value={port.isDefaultReceipt ? "Port caixa / recibos" : "Port lógica"} />
                           <InfoLine
                             label="Vínculos"
                             value={(port.bindings?.length ?? 0) > 0 ? `${port.bindings?.length ?? 0} impressora(s)` : 'Configurado no Terminal'}
@@ -557,13 +565,15 @@ export default function ImpressorasPage() {
                         >
                           Editar
                         </button>
-                        <button
-                          onClick={() => handleDeletePort(port)}
-                          className="rounded-xl border border-red-500/20 px-3 py-2 text-red-600 transition hover:bg-red-500/10"
-                          title="Remover port"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {!(port.isDefaultReceipt || port.isSystem) && (
+                          <button
+                            onClick={() => handleDeletePort(port)}
+                            className="rounded-xl border border-red-500/20 px-3 py-2 text-red-600 transition hover:bg-red-500/10"
+                            title="Remover port"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </article>
                   )
