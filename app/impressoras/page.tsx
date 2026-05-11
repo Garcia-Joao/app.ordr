@@ -45,7 +45,6 @@ function formatDateTime(value?: string | null) {
 
 function isTerminalOnline(terminal: PrintTerminal) {
   if (!terminal.printTerminalEnabled) return false
-  if (terminal.status === 'online') return true
   if (!terminal.lastSeenAt) return false
 
   const lastSeen = new Date(terminal.lastSeenAt).getTime()
