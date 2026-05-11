@@ -40,6 +40,8 @@ export type Supplier = {
   email?: string | null
   address?: string | null
   notes?: string | null
+  photoUrl?: string | null
+  categories?: string[]
   active: boolean
   priceTables: SupplierPriceTable[]
   createdAt: string
@@ -54,6 +56,8 @@ export type SupplierInput = {
   email?: string | null
   address?: string | null
   notes?: string | null
+  photoUrl?: string | null
+  categories?: string[] | string | null
   active?: boolean
   createDefaultTable?: boolean
 }
