@@ -12,6 +12,8 @@ import {
 import {
   Building2,
   Check,
+  KeyRound,
+  RadioTower,
   Grid3X3,
   ImageIcon,
   List,
@@ -23,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  addSupplierByOrdrCode,
   createSupplier,
   getSuppliers,
   type Supplier,
@@ -193,6 +196,8 @@ export default function FornecedoresPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [codeModalOpen, setCodeModalOpen] = useState(false);
+  const [ordrCode, setOrdrCode] = useState("");
   const [supplierForm, setSupplierForm] =
     useState<SupplierForm>(emptySupplierForm);
 
@@ -241,6 +246,8 @@ export default function FornecedoresPage() {
   const stats = useMemo(() => {
     return {
       active: suppliers.filter((supplier) => supplier.active).length,
+      external: suppliers.filter((supplier) => supplier.isExternal).length,
+      online: suppliers.filter((supplier) => supplier.onlineStatus?.isOnline).length,
       tables: suppliers.reduce(
         (total, supplier) => total + supplier.priceTables.length,
         0,
@@ -265,6 +272,27 @@ export default function FornecedoresPage() {
     if (saving) return;
     setModalOpen(false);
     setSupplierForm(emptySupplierForm);
+  }
+
+
+  async function handleAddByCode() {
+    const code = ordrCode.trim();
+    if (!code) return;
+
+    setError("");
+    setSaving(true);
+
+    try {
+      await addSupplierByOrdrCode(code);
+      await loadSuppliers();
+      setCodeModalOpen(false);
+      setOrdrCode("");
+      showSuccess("Fornecedor liberado pelo código ORDR.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao adicionar fornecedor pelo código.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleCreateSupplier() {
@@ -324,9 +352,10 @@ export default function FornecedoresPage() {
 
               <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[520px]">
                 <StatCard label="Fornecedores ativos" value={stats.active} />
+                <StatCard label="Externos liberados" value={stats.external} />
+                <StatCard label="Online agora" value={stats.online} />
                 <StatCard label="Tabelas de preço" value={stats.tables} />
-                <StatCard label="Itens cadastrados" value={stats.items} />
-                <StatCard label="Itens vinculados" value={stats.linkedItems} />
+                
               </div>
             </div>
 
@@ -378,11 +407,20 @@ export default function FornecedoresPage() {
 
               <button
                 type="button"
+                onClick={() => setCodeModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-black text-primary transition hover:bg-primary/15"
+              >
+                <KeyRound className="h-4 w-4" />
+                Adicionar código ORDR
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-lg transition hover:brightness-110"
               >
                 <Plus className="h-4 w-4" />
-                Novo fornecedor
+                Novo fornecedor local
               </button>
             </div>
           </div>
@@ -422,6 +460,20 @@ export default function FornecedoresPage() {
           </section>
         )}
       </div>
+
+      {codeModalOpen && (
+        <CodeModal
+          value={ordrCode}
+          saving={saving}
+          onChange={setOrdrCode}
+          onClose={() => {
+            if (saving) return;
+            setCodeModalOpen(false);
+            setOrdrCode("");
+          }}
+          onSave={handleAddByCode}
+        />
+      )}
 
       {modalOpen && (
         <SupplierModal
@@ -537,8 +589,8 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             <SupplierAvatar supplier={supplier} large />
           </div>
         )}
-        <div className="absolute left-4 top-4 rounded-full bg-background/90 px-3 py-1 text-xs font-black backdrop-blur">
-          {supplier.active ? "Ativo" : "Inativo"}
+        <div className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black backdrop-blur ${supplier.isExternal ? supplier.onlineStatus?.isOnline ? "bg-emerald-500/90 text-white" : "bg-zinc-950/80 text-zinc-200" : "bg-background/90"}` }>
+          {supplier.isExternal ? (supplier.onlineStatus?.isOnline ? "Online" : "Offline") : supplier.active ? "Local" : "Inativo"}
         </div>
       </div>
 
@@ -548,6 +600,11 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             <h2 className="truncate text-xl font-black tracking-tight">
               {supplier.name}
             </h2>
+            {supplier.isExternal && (
+              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-black text-emerald-300">
+                <RadioTower className="h-3 w-3" /> Fornecedor ORDR
+              </p>
+            )}
             <p className="mt-1 truncate text-sm text-muted-foreground">
               {supplier.contactName ||
                 supplier.phone ||
@@ -632,6 +689,65 @@ function MiniMetric({
         <span className="text-[10px] font-black uppercase">{label}</span>
       </div>
       <p className="mt-1 text-lg font-black">{value}</p>
+    </div>
+  );
+}
+
+function CodeModal({
+  value,
+  saving,
+  onChange,
+  onClose,
+  onSave,
+}: {
+  value: string;
+  saving: boolean;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-[2rem] border border-border bg-card p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-3 inline-flex rounded-2xl bg-primary/10 p-3 text-primary">
+              <KeyRound className="h-5 w-5" />
+            </div>
+            <h2 className="text-2xl font-black">Adicionar fornecedor por código</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Use o código ORDR informado pelo fornecedor para liberar a visualização das informações e tabelas de preço.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-2xl border border-border p-2 hover:bg-secondary">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <label className="mt-5 block text-xs font-black uppercase text-muted-foreground">Código ORDR</label>
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value.toUpperCase())}
+          className="mt-2 w-full rounded-2xl border border-border bg-background px-4 py-3 text-lg font-black tracking-[0.2em] outline-none focus:border-primary"
+          placeholder="AB12CD34"
+          maxLength={12}
+        />
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-2xl border border-border px-4 py-3 text-sm font-black hover:bg-secondary">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving || !value.trim()}
+            className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground disabled:opacity-50"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Liberar fornecedor
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

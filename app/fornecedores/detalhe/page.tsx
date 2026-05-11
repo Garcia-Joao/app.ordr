@@ -306,6 +306,8 @@ export default function SupplierDetailPage() {
     );
   }, [suppliers, wantedSlug]);
 
+  const canManage = Boolean(supplier?.canManage && !supplier?.readonly);
+
   const selectedTable = useMemo(() => {
     if (!supplier) return null;
     return (
@@ -403,18 +405,20 @@ export default function SupplierDetailPage() {
   }
 
   function openSupplierModal() {
-    if (!supplier) return;
+    if (!supplier || !canManage) return;
     setSupplierForm(supplierToForm(supplier));
     setModalKind("supplier");
   }
 
   function openTableModal(table?: SupplierPriceTable) {
+    if (!canManage) return;
     setEditingTableId(table?.id ?? null);
     setTableForm(tableToForm(table));
     setModalKind("table");
   }
 
   function openItemModal(item?: SupplierPriceTableItem) {
+    if (!canManage) return;
     setEditingItemId(item?.id ?? null);
     setItemForm(itemToForm(item));
     setModalKind("item");
@@ -431,7 +435,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handleSaveSupplier() {
-    if (!supplier || !supplierForm?.name.trim()) return;
+    if (!supplier || !canManage || !supplierForm?.name.trim()) return;
 
     setSaving(true);
     setError("");
@@ -454,7 +458,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handleDeactivateSupplier() {
-    if (!supplier) return;
+    if (!supplier || !canManage) return;
     if (!window.confirm(`Desativar o fornecedor ${supplier.name}?`)) return;
 
     setSaving(true);
@@ -474,7 +478,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handleReactivateSupplier() {
-    if (!supplier) return;
+    if (!supplier || !canManage) return;
 
     setSaving(true);
     setError("");
@@ -493,7 +497,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handlePermanentDeleteSupplier() {
-    if (!supplier) return;
+    if (!supplier || !canManage) return;
     if (supplier.active) {
       setError("Desative o fornecedor antes de excluir permanentemente.");
       return;
@@ -523,7 +527,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handleSaveTable() {
-    if (!supplier || !tableForm.name.trim()) return;
+    if (!supplier || !canManage || !tableForm.name.trim()) return;
 
     setSaving(true);
     setError("");
@@ -552,7 +556,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handleDeleteTable(table: SupplierPriceTable) {
-    if (!supplier) return;
+    if (!supplier || !canManage) return;
     if (!window.confirm(`Excluir a tabela ${table.name}?`)) return;
 
     setSaving(true);
@@ -574,7 +578,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handleSaveItem() {
-    if (!supplier || !selectedTable) return;
+    if (!supplier || !selectedTable || !canManage) return;
 
     const linkedProduct = products.find(
       (product) => product.id === itemForm.productId,
@@ -619,7 +623,7 @@ export default function SupplierDetailPage() {
   }
 
   async function handleDeleteItem(item: SupplierPriceTableItem) {
-    if (!supplier || !selectedTable) return;
+    if (!supplier || !selectedTable || !canManage) return;
     if (!window.confirm(`Remover ${item.itemName} da tabela?`)) return;
 
     setSaving(true);
@@ -747,46 +751,54 @@ export default function SupplierDetailPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={openSupplierModal}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-black hover:bg-secondary"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                    Editar fornecedor
-                  </button>
-                  {supplier.active ? (
+                  {supplier.readonly && (
+                    <span className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-black text-emerald-300">
+                      Somente leitura
+                    </span>
+                  )}
+                  {canManage && (
                     <button
                       type="button"
-                      onClick={handleDeactivateSupplier}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 bg-card px-4 py-3 text-sm font-black text-orange-300 hover:bg-orange-500/10 disabled:opacity-40"
+                      onClick={openSupplierModal}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-black hover:bg-secondary"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      Desativar
+                      <Edit3 className="h-4 w-4" />
+                      Editar fornecedor
                     </button>
-                  ) : (
-                    <>
+                  )}
+                  {canManage &&
+                    (supplier.active ? (
                       <button
                         type="button"
-                        onClick={handleReactivateSupplier}
+                        onClick={handleDeactivateSupplier}
                         disabled={saving}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-card px-4 py-3 text-sm font-black text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40"
-                      >
-                        <Check className="h-4 w-4" />
-                        Reativar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handlePermanentDeleteSupplier}
-                        disabled={saving}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 bg-card px-4 py-3 text-sm font-black text-red-300 hover:bg-red-500/10 disabled:opacity-40"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 bg-card px-4 py-3 text-sm font-black text-orange-300 hover:bg-orange-500/10 disabled:opacity-40"
                       >
                         <Trash2 className="h-4 w-4" />
-                        Excluir
+                        Desativar
                       </button>
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleReactivateSupplier}
+                          disabled={saving}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-card px-4 py-3 text-sm font-black text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40"
+                        >
+                          <Check className="h-4 w-4" />
+                          Reativar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePermanentDeleteSupplier}
+                          disabled={saving}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-red-500/30 bg-card px-4 py-3 text-sm font-black text-red-300 hover:bg-red-500/10 disabled:opacity-40"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Excluir
+                        </button>
+                      </>
+                    ))}
                 </div>
               </div>
             </div>
@@ -834,14 +846,16 @@ export default function SupplierDetailPage() {
                   Organize por data, condição ou fornecedor.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => openTableModal()}
-                className="rounded-2xl bg-primary p-3 text-primary-foreground hover:brightness-110"
-                title="Nova tabela"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => openTableModal()}
+                  className="rounded-2xl bg-primary p-3 text-primary-foreground hover:brightness-110"
+                  title="Nova tabela"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
             </div>
 
             <div className="mt-4 space-y-2">
@@ -906,6 +920,8 @@ export default function SupplierDetailPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {canManage && (
+                      <>
                     <button
                       type="button"
                       onClick={() => openTableModal(selectedTable)}
@@ -930,6 +946,8 @@ export default function SupplierDetailPage() {
                       <PackagePlus className="h-4 w-4" />
                       Novo item
                     </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -964,8 +982,8 @@ export default function SupplierDetailPage() {
                       <ItemCard
                         key={item.id}
                         item={item}
-                        onEdit={() => openItemModal(item)}
-                        onDelete={() => handleDeleteItem(item)}
+                        onEdit={canManage ? () => openItemModal(item) : undefined}
+                        onDelete={canManage ? () => handleDeleteItem(item) : undefined}
                       />
                     ))}
                   </div>
@@ -984,8 +1002,8 @@ export default function SupplierDetailPage() {
                         <ItemRow
                           key={item.id}
                           item={item}
-                          onEdit={() => openItemModal(item)}
-                          onDelete={() => handleDeleteItem(item)}
+                          onEdit={canManage ? () => openItemModal(item) : undefined}
+                          onDelete={canManage ? () => handleDeleteItem(item) : undefined}
                         />
                       ))}
                     </div>
@@ -1074,8 +1092,8 @@ function ItemCard({
   onDelete,
 }: {
   item: SupplierPriceTableItem;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   return (
     <div className="rounded-3xl border border-border bg-background/70 p-4">
@@ -1086,22 +1104,28 @@ function ItemCard({
             {item.sku ? `SKU: ${item.sku}` : item.notes || "Sem observações"}
           </p>
         </div>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="rounded-xl border border-border p-2 hover:bg-secondary"
-          >
-            <Edit3 className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-xl border border-red-500/30 p-2 text-red-300 hover:bg-red-500/10"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+        {(onEdit || onDelete) && (
+          <div className="flex gap-1">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="rounded-xl border border-border p-2 hover:bg-secondary"
+              >
+                <Edit3 className="h-4 w-4" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded-xl border border-red-500/30 p-2 text-red-300 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {item.product ? (
@@ -1135,8 +1159,8 @@ function ItemRow({
   onDelete,
 }: {
   item: SupplierPriceTableItem;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   return (
     <div className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_90px_90px_110px_110px] lg:items-center">
@@ -1162,20 +1186,25 @@ function ItemRow({
       <div className="text-sm font-bold">{getUnitLabel(item.unit)}</div>
       <div className="text-sm font-black">{formatBRL(item.unitPrice)}</div>
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded-xl border border-border p-2 hover:bg-secondary"
-        >
-          <Edit3 className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded-xl border border-red-500/30 p-2 text-red-300 hover:bg-red-500/10"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-xl border border-border p-2 hover:bg-secondary"
+          >
+            <Edit3 className="h-4 w-4" />
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-xl border border-red-500/30 p-2 text-red-300 hover:bg-red-500/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+        {!onEdit && !onDelete && <span className="text-xs font-bold text-muted-foreground">Somente leitura</span>}
       </div>
     </div>
   );

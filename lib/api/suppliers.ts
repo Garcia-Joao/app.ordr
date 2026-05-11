@@ -8,6 +8,7 @@ export type SupplierPriceTableItem = {
   product?: Pick<StockProduct, 'id' | 'name' | 'emoji' | 'stockUnit' | 'category'> | null
   itemName: string
   sku?: string | null
+  category?: string | null
   unit: StockUnit
   quantity: string | number
   unitPrice: string | number
@@ -44,6 +45,18 @@ export type Supplier = {
   photoData?: string | null
   categories?: string[]
   active: boolean
+  supplierCompanyId?: string | null
+  ordrCode?: string | null
+  onlineEnabled?: boolean
+  publicListingEnabled?: boolean
+  operatingHours?: any[]
+  onlineStatus?: { isOnline: boolean; onlineEnabled: boolean; insideOperatingHours: boolean; today?: any }
+  readonly?: boolean
+  canManage?: boolean
+  isExternal?: boolean
+  accessMode?: 'OWN' | 'PUBLIC' | 'CODE'
+  isPublic?: boolean
+  hasCodeAccess?: boolean
   priceTables: SupplierPriceTable[]
   createdAt: string
   updatedAt: string
@@ -76,6 +89,7 @@ export type SupplierPriceTableItemInput = {
   productId?: string | null
   itemName?: string | null
   sku?: string | null
+  category?: string | null
   unit?: StockUnit | null
   quantity?: number | string | null
   unitPrice: number | string
@@ -85,6 +99,13 @@ export type SupplierPriceTableItemInput = {
 
 export function getSuppliers() {
   return apiFetch<Supplier[]>('/suppliers')
+}
+
+export function addSupplierByOrdrCode(ordrCode: string) {
+  return apiFetch<Supplier>('/suppliers/access-code', {
+    method: 'POST',
+    body: JSON.stringify({ ordrCode }),
+  })
 }
 
 export function createSupplier(input: SupplierInput) {
