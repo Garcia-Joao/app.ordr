@@ -27,6 +27,21 @@ import { getFirstAllowedPath } from '@/lib/auth-routing'
 
 const BRAND_ORANGE = '#dd7c12'
 
+const SUPPLIERS_APP_URL = process.env.NEXT_PUBLIC_SUPPLIERS_APP_URL || 'https://suppliers.panelordr.com.br/'
+
+function isSupplierCompany(user: Awaited<ReturnType<typeof me>>['user']) {
+  return String(user.currentCompany?.companyType ?? '').toUpperCase() === 'SUPPLIER'
+}
+
+function redirectAfterLogin(user: Awaited<ReturnType<typeof me>>['user'], router: ReturnType<typeof useRouter>) {
+  if (isSupplierCompany(user)) {
+    window.location.href = SUPPLIERS_APP_URL
+    return
+  }
+
+  router.replace(getFirstAllowedPath(user))
+}
+
 export default function LoginPage() {
   const router = useRouter()
 
@@ -69,7 +84,7 @@ export default function LoginPage() {
         localStorage.setItem('ordr-user', JSON.stringify(result.user))
         window.dispatchEvent(new Event('ordr-user-updated'))
 
-        router.replace(getFirstAllowedPath(result.user))
+        redirectAfterLogin(result.user, router)
       } catch {
         if (!isMounted) return
 
@@ -97,7 +112,7 @@ export default function LoginPage() {
       localStorage.setItem('ordr-user', JSON.stringify(result.user))
       window.dispatchEvent(new Event('ordr-user-updated'))
 
-      router.replace(getFirstAllowedPath(result.user))
+      redirectAfterLogin(result.user, router)
     } catch (err) {
       localStorage.removeItem('ordr-user')
       window.dispatchEvent(new Event('ordr-user-updated'))

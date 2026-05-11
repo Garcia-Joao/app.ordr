@@ -3,6 +3,7 @@ import { apiFetch } from './client'
 export type AuthCompany = {
   id: string
   name: string
+  companyType?: 'BUSINESS' | 'SUPPLIER' | string
   isTest: boolean
   testSourceCompanyId?: string | null
   role: string
