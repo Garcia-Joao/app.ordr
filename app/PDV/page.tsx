@@ -22,7 +22,7 @@ import type {
   CategoryConfig,
   PaymentMethod,
 } from '@/lib/pos-types'
-import { getItemPrice } from '@/lib/pos-types'
+import { formatBRL, getItemPrice } from '@/lib/pos-types'
 
 import { createOrder, getCategories, getProducts } from '@/lib/api'
 import { getStockProducts } from '@/lib/api/stock'
@@ -44,6 +44,134 @@ function getItemKey(item: OrderItem): string {
 
   const selectionKey = JSON.stringify(selections)
   return `${item.product.id}-${selectionKey}`
+}
+
+
+function escapeReceiptHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function getVariationLabelsForReceipt(item: OrderItem): string[] {
+  const groups = item.product.variationGroups ?? []
+  const selections = item.variationSelections ?? []
+
+  return selections.flatMap((selection) => {
+    const group = groups.find((candidate) => candidate.id === selection.groupId)
+    if (!group) return []
+
+    return selection.selectedOptionIds
+      .map((optionId) => {
+        const option = group.options.find((candidate) => candidate.id === optionId)
+        return option ? `${group.name}: ${option.name}` : null
+      })
+      .filter((value): value is string => value !== null)
+  })
+}
+
+function buildReceiptHtml(order: Order) {
+  const items = Array.isArray(order.items) ? order.items : []
+  const orderTotal = Number(order.total ?? 0)
+  const taxApplied = Boolean(order.taxApplied)
+  const calculatedSubtotal = items.reduce(
+    (sum, item) => sum + Number(getItemPrice(item) ?? 0) * item.quantity,
+    0
+  )
+  const subtotal = taxApplied && orderTotal > 0 ? orderTotal / 1.1 : calculatedSubtotal
+  const tax = taxApplied ? Math.max(0, orderTotal - subtotal) : 0
+  const createdAt = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt)
+
+  const itemRows = items.map((item) => {
+    const itemPrice = Number(getItemPrice(item) ?? 0)
+    const variations = getVariationLabelsForReceipt(item)
+      .map((label) => `<div class="variation">${escapeReceiptHtml(label)}</div>`)
+      .join('')
+
+    return `
+      <div class="item">
+        <div>
+          <strong>${item.quantity}x ${escapeReceiptHtml(item.product.name)}</strong>
+          ${variations}
+          ${item.notes ? `<div class="variation">Obs: ${escapeReceiptHtml(item.notes)}</div>` : ''}
+        </div>
+        <span>${escapeReceiptHtml(formatBRL(itemPrice * item.quantity))}</span>
+      </div>
+    `
+  }).join('')
+
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Recibo ORDR</title>
+  <style>
+    @page { size: 80mm auto; margin: 6mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; color: #111; background: #fff; }
+    .receipt { width: 100%; max-width: 320px; margin: 0 auto; font-size: 12px; }
+    .center { text-align: center; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: 0.06em; }
+    .muted { color: #555; font-size: 11px; }
+    .line { border-top: 1px dashed #888; margin: 12px 0; }
+    .row, .item { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .row + .row { margin-top: 4px; }
+    .item + .item { margin-top: 8px; }
+    .item span, .row span:last-child { white-space: nowrap; }
+    .variation { margin-left: 10px; margin-top: 2px; color: #555; font-size: 11px; }
+    .total { font-size: 16px; font-weight: 800; }
+    .badge { display: inline-block; margin-top: 10px; border: 1px solid #111; border-radius: 999px; padding: 3px 10px; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <main class="receipt">
+    <section class="center">
+      <h1>ORDR</h1>
+      <div class="muted">Bar & Eventos POS</div>
+    </section>
+    <div class="line"></div>
+    <div class="row"><span>Pedido</span><strong>#${escapeReceiptHtml(order.id)}</strong></div>
+    <div class="row"><span>Comanda</span><strong>#${escapeReceiptHtml(order.comanda)}</strong></div>
+    ${order.comandaName ? `<div class="row"><span>Nome</span><strong>${escapeReceiptHtml(order.comandaName)}</strong></div>` : ''}
+    <div class="row"><span>Data</span><span>${escapeReceiptHtml(createdAt.toLocaleDateString('pt-BR'))}</span></div>
+    <div class="row"><span>Hora</span><span>${escapeReceiptHtml(createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))}</span></div>
+    <div class="line"></div>
+    ${itemRows}
+    <div class="line"></div>
+    <div class="row"><span>Subtotal</span><span>${escapeReceiptHtml(formatBRL(subtotal))}</span></div>
+    ${taxApplied ? `<div class="row"><span>Taxa (10%)</span><span>${escapeReceiptHtml(formatBRL(tax))}</span></div>` : ''}
+    <div class="line"></div>
+    <div class="row total"><span>Total</span><span>${escapeReceiptHtml(formatBRL(orderTotal))}</span></div>
+    <section class="center">
+      <span class="badge">${escapeReceiptHtml(order.status.toUpperCase())}</span>
+      <div class="line"></div>
+      <div class="muted">Obrigado pela preferência!</div>
+    </section>
+  </main>
+  <script>
+    window.addEventListener('load', () => {
+      window.focus();
+      window.print();
+      setTimeout(() => window.close(), 500);
+    });
+  </script>
+</body>
+</html>`
+}
+
+function printReceipt(order: Order) {
+  const receiptWindow = window.open('', '_blank', 'width=420,height=720')
+
+  if (!receiptWindow) {
+    throw new Error('O navegador bloqueou a janela de impressão do recibo.')
+  }
+
+  receiptWindow.document.open()
+  receiptWindow.document.write(buildReceiptHtml(order))
+  receiptWindow.document.close()
 }
 
 function isToday(date: Date) {
@@ -664,9 +792,15 @@ export default function POSPage() {
   }, [isSubmittingOrder])
 
   const handlePrint = useCallback(() => {
-    if (isSubmittingOrder) return
-    setSelectedOrder(null)
-  }, [isSubmittingOrder])
+    if (isSubmittingOrder || !selectedOrder) return
+
+    try {
+      printReceipt(selectedOrder)
+    } catch (error) {
+      console.error('Erro ao imprimir recibo:', error)
+      alert(error instanceof Error ? error.message : 'Erro ao imprimir recibo.')
+    }
+  }, [isSubmittingOrder, selectedOrder])
 
   if (isLoading) {
     return (

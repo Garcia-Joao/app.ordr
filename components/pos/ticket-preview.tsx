@@ -51,11 +51,15 @@ export function TicketPreview({ order, onClose, onPrint }: TicketPreviewProps) {
       ? order.createdAt
       : new Date(order.createdAt)
 
-  const subtotal = items.reduce(
+  const calculatedSubtotal = items.reduce(
     (sum, item) => sum + Number(getItemPrice(item) ?? 0) * item.quantity,
     0
   )
-  const tax = subtotal * 0.1
+  const taxApplied = Boolean(order.taxApplied)
+  const subtotal = taxApplied && orderTotal > 0
+    ? orderTotal / 1.1
+    : calculatedSubtotal
+  const tax = taxApplied ? Math.max(0, orderTotal - subtotal) : 0
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
@@ -163,10 +167,12 @@ export function TicketPreview({ order, onClose, onPrint }: TicketPreviewProps) {
                 <span>Subtotal</span>
                 <span>{formatBRL(subtotal)}</span>
               </div>
-              <div className="flex justify-between gap-3 text-xs opacity-70">
-                <span>Taxa (10%)</span>
-                <span>{formatBRL(tax)}</span>
-              </div>
+              {taxApplied && (
+                <div className="flex justify-between gap-3 text-xs opacity-70">
+                  <span>Taxa (10%)</span>
+                  <span>{formatBRL(tax)}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-3 border-t border-dashed border-background/30 pt-2 text-base font-bold sm:text-lg">
                 <span>TOTAL</span>
                 <span>{formatBRL(orderTotal)}</span>

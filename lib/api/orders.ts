@@ -112,3 +112,9 @@ export function cancelOrder(orderId: string) {
     method: 'PATCH',
   })
 }
+
+export function reprintOrderTickets(orderId: string) {
+  return apiFetch<{ jobs: Array<{ id: string; status: string }> }>(`/orders/${orderId}/reprint`, {
+    method: 'POST',
+  })
+}

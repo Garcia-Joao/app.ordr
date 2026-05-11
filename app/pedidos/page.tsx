@@ -11,11 +11,12 @@ import {
   ChevronRight,
   Loader2,
   Calendar,
+  Printer,
   Clock3,
 } from 'lucide-react'
 import type { Order, OrderItem } from '@/lib/pos-types'
 import { formatBRL, getItemPrice } from '@/lib/pos-types'
-import { cancelOrder, getOrders } from '@/lib/api/orders'
+import { cancelOrder, getOrders, reprintOrderTickets } from '@/lib/api/orders'
 import { canAny, getStoredUser } from '@/lib/permissions'
 import type { AuthUser } from '@/lib/api/auth'
 
@@ -98,6 +99,7 @@ export default function PedidosPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [isReprinting, setIsReprinting] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid' | 'cancelled'>('all')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -184,6 +186,29 @@ export default function PedidosPage() {
   const selectedConfig = selectedOrder
     ? statusConfig[selectedOrder.status as 'pending' | 'paid' | 'cancelled']
     : null
+
+
+  const handleReprintOrder = async () => {
+    if (!selectedOrder || selectedOrder.status === 'cancelled') return
+
+    try {
+      setIsReprinting(true)
+      const result = await reprintOrderTickets(selectedOrder.id)
+      const failedCount = result.jobs.filter((job) => job.status === 'FAILED').length
+
+      if (failedCount > 0) {
+        alert(`${failedCount} job(s) não puderam ser enviados. Verifique as ports/impressoras.`)
+        return
+      }
+
+      alert('Comanda enviada para reimpressão.')
+    } catch (error: any) {
+      console.error('Erro ao reimprimir pedido:', error)
+      alert(error?.message || 'Erro ao reimprimir pedido')
+    } finally {
+      setIsReprinting(false)
+    }
+  }
 
   const handleCancelOrder = async () => {
     if (!selectedOrder || selectedOrder.status === 'cancelled' || !canCancelOrder) return
@@ -493,6 +518,26 @@ export default function PedidosPage() {
                         {formatBRL(selectedOrder.total)}
                       </p>
                     </div>
+
+                    {selectedOrder.status !== 'cancelled' && (
+                      <button
+                        onClick={handleReprintOrder}
+                        disabled={isReprinting}
+                        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isReprinting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Reimprimindo...
+                          </>
+                        ) : (
+                          <>
+                            <Printer className="h-4 w-4" />
+                            Reimprimir comanda
+                          </>
+                        )}
+                      </button>
+                    )}
 
                     {selectedOrder.status !== 'cancelled' && canCancelOrder && (
                       <button
