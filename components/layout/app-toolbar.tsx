@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Clock,
@@ -775,13 +776,14 @@ export function AppToolbar({
           </div>
 
           {currentCompany && (
-            <div
-              className={`hidden min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-foreground lg:flex ${
+            <Link
+              href="/selecionar-empresa/"
+              className={`hidden min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-foreground transition hover:-translate-y-0.5 hover:border-primary hover:bg-secondary lg:flex ${
                 currentCompany.isTest
-                  ? 'max-w-[290px] border-sky-500/35 bg-sky-500/10 shadow-[0_0_0_1px_rgba(14,165,233,0.12)]'
-                  : 'max-w-[230px] border-border bg-background'
+                  ? 'max-w-[310px] border-sky-500/35 bg-sky-500/10 shadow-[0_0_0_1px_rgba(14,165,233,0.12)]'
+                  : 'max-w-[250px] border-border bg-background'
               }`}
-              title={currentCompany.isTest ? `${currentCompany.name} • ambiente de teste` : currentCompany.name}
+              title={currentCompany.isTest ? `${currentCompany.name} • ambiente de teste • trocar empresa` : `${currentCompany.name} • trocar empresa`}
             >
               <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${currentCompany.isTest ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300' : 'bg-primary/10 text-primary'}`}>
                 {currentCompany.isTest ? (
@@ -817,7 +819,11 @@ export function AppToolbar({
                   Ativa
                 </span>
               ) : null}
-            </div>
+
+              <span className="hidden shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-primary xl:inline-flex">
+                Trocar
+              </span>
+            </Link>
           )}
 
           {accountContent ? (
