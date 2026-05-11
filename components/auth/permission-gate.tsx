@@ -6,9 +6,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
 import { canAny, getStoredUser } from '@/lib/permissions'
+import type { AuthCompany } from '@/lib/api/auth'
 import { getFirstAllowedPath } from '@/lib/auth-routing'
 import { me } from '@/lib/api/auth'
 import type { AuthUser } from '@/lib/api/auth'
+
+const SUPPLIERS_APP_URL = process.env.NEXT_PUBLIC_SUPPLIERS_APP_URL || 'https://suppliers.panelordr.com.br/'
+
+function isSupplierCompany(company?: AuthCompany | null) {
+  return String(company?.companyType ?? '').toUpperCase() === 'SUPPLIER'
+}
 
 type PermissionGateProps = {
   children: React.ReactNode
@@ -33,6 +40,15 @@ export function usePermissionGuard(permissions: string[]) {
       const storedUser = getStoredUser()
 
       if (storedUser) {
+        if (isSupplierCompany(storedUser.currentCompany)) {
+          if ((storedUser.companies?.length ?? 0) > 1) {
+            router.replace('/selecionar-empresa/')
+          } else {
+            window.location.href = SUPPLIERS_APP_URL
+          }
+          return
+        }
+
         setUser(storedUser)
         return
       }
@@ -44,6 +60,15 @@ export function usePermissionGuard(permissions: string[]) {
 
         localStorage.setItem('ordr-user', JSON.stringify(result.user))
         window.dispatchEvent(new Event('ordr-user-updated'))
+        if (isSupplierCompany(result.user.currentCompany)) {
+          if ((result.user.companies?.length ?? 0) > 1) {
+            router.replace('/selecionar-empresa/')
+          } else {
+            window.location.href = SUPPLIERS_APP_URL
+          }
+          return
+        }
+
         setUser(result.user)
       } catch {
         if (!isMounted) return
@@ -59,7 +84,16 @@ export function usePermissionGuard(permissions: string[]) {
     syncUser()
 
     function handleUserUpdated() {
-      setUser(getStoredUser())
+      const nextUser = getStoredUser()
+      if (isSupplierCompany(nextUser?.currentCompany)) {
+        if ((nextUser?.companies?.length ?? 0) > 1) {
+          router.replace('/selecionar-empresa/')
+        } else {
+          window.location.href = SUPPLIERS_APP_URL
+        }
+        return
+      }
+      setUser(nextUser)
     }
 
     window.addEventListener('storage', handleUserUpdated)
@@ -137,6 +171,14 @@ export function PermissionGate({
     return (
       <div className="flex min-h-[60vh] items-center justify-center p-6 text-sm text-muted-foreground">
         Redirecionando para login...
+      </div>
+    )
+  }
+
+  if (isSupplierCompany(user.currentCompany)) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-6 text-sm text-muted-foreground">
+        Redirecionando para o painel correto...
       </div>
     )
   }

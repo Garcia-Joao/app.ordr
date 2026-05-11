@@ -49,11 +49,6 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
     ],
   },
   {
-    path: '/fornecedores/',
-    label: 'Fornecedores',
-    permissions: ['suppliers.view', 'suppliers.manage'],
-  },
-  {
     path: '/eventos/',
     label: 'Eventos',
     permissions: ['events.view'],
@@ -97,6 +92,10 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
 
 export function getFirstAllowedPath(user: AuthUser | null | undefined) {
   if (!user) return '/login/'
+
+  if (String(user.currentCompany?.companyType ?? '').toUpperCase() === 'SUPPLIER') {
+    return '/selecionar-empresa/'
+  }
 
   const route = APP_ROUTE_ACCESS.find((item) => {
     return canAny(user, item.permissions)

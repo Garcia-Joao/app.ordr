@@ -33,7 +33,16 @@ function isSupplierCompany(user: Awaited<ReturnType<typeof me>>['user']) {
   return String(user.currentCompany?.companyType ?? '').toUpperCase() === 'SUPPLIER'
 }
 
+function hasMultipleCompanies(user: Awaited<ReturnType<typeof me>>['user']) {
+  return (user.companies?.length ?? 0) > 1
+}
+
 function redirectAfterLogin(user: Awaited<ReturnType<typeof me>>['user'], router: ReturnType<typeof useRouter>) {
+  if (hasMultipleCompanies(user)) {
+    router.replace('/selecionar-empresa/')
+    return
+  }
+
   if (isSupplierCompany(user)) {
     window.location.href = SUPPLIERS_APP_URL
     return
