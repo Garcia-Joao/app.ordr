@@ -40,15 +40,16 @@ function hasMultipleCompanies(user: Awaited<ReturnType<typeof me>>['user']) {
 function redirectAfterLogin(user: Awaited<ReturnType<typeof me>>['user'], router: ReturnType<typeof useRouter>) {
   if (hasMultipleCompanies(user)) {
     router.replace('/selecionar-empresa/')
-    return
+    return true
   }
 
   if (isSupplierCompany(user)) {
     window.location.href = SUPPLIERS_APP_URL
-    return
+    return true
   }
 
   router.replace(getFirstAllowedPath(user))
+  return true
 }
 
 export default function LoginPage() {
@@ -58,6 +59,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingLabel, setLoadingLabel] = useState('Entrando...')
   const [error, setError] = useState('')
 
   const mouseX = useMotionValue(0)
@@ -112,16 +114,31 @@ export default function LoginPage() {
   async function handleLogin() {
     if (!canSubmit) return
 
+    let shouldKeepLoading = false
+
     try {
       setLoading(true)
+      setLoadingLabel('Entrando...')
       setError('')
 
-      const result = await login(username.trim(), password)
+      await login(username.trim(), password)
+
+      setLoadingLabel('Carregando empresas...')
+
+      const result = await me()
 
       localStorage.setItem('ordr-user', JSON.stringify(result.user))
       window.dispatchEvent(new Event('ordr-user-updated'))
 
-      redirectAfterLogin(result.user, router)
+      setLoadingLabel(
+        hasMultipleCompanies(result.user)
+          ? 'Abrindo seleção...'
+          : isSupplierCompany(result.user)
+            ? 'Abrindo painel de fornecedores...'
+            : 'Abrindo PDV...'
+      )
+
+      shouldKeepLoading = redirectAfterLogin(result.user, router)
     } catch (err) {
       localStorage.removeItem('ordr-user')
       window.dispatchEvent(new Event('ordr-user-updated'))
@@ -133,7 +150,10 @@ export default function LoginPage() {
 
       setError(message)
     } finally {
-      setLoading(false)
+      if (!shouldKeepLoading) {
+        setLoading(false)
+        setLoadingLabel('Entrando...')
+      }
     }
   }
 
@@ -487,7 +507,7 @@ export default function LoginPage() {
                     />
 
                     <span className="relative flex items-center gap-2">
-                      {loading ? 'Entrando...' : 'Entrar'}
+                      {loading ? loadingLabel : 'Entrar'}
                       {!loading && (
                         <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                       )}
