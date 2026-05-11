@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ArrowLeft,
@@ -197,9 +197,8 @@ function itemToForm(item?: SupplierPriceTableItem | null): ItemForm {
 }
 
 export default function SupplierDetailPage() {
-  const params = useParams<{ slug: string }>()
   const router = useRouter()
-  const wantedSlug = decodeURIComponent(params.slug ?? '')
+  const [wantedSlug, setWantedSlug] = useState('')
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [products, setProducts] = useState<StockProduct[]>([])
@@ -261,6 +260,12 @@ export default function SupplierDetailPage() {
   }
 
   useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('slug') ?? ''
+    setWantedSlug(decodeURIComponent(slug))
+  }, [])
+
+  useEffect(() => {
+    if (!wantedSlug) return
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantedSlug])
@@ -288,7 +293,7 @@ export default function SupplierDetailPage() {
         : null
 
     if (current && slugify(current.name) !== wantedSlug) {
-      router.replace(`/fornecedores/${encodeURIComponent(slugify(current.name))}`)
+      router.replace(`/fornecedores/detalhe?slug=${encodeURIComponent(slugify(current.name))}`)
     }
   }
 

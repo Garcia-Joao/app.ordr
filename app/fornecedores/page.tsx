@@ -57,7 +57,7 @@ function slugify(value: string) {
 }
 
 function supplierUrl(supplier: Supplier) {
-  return `/fornecedores/${encodeURIComponent(slugify(supplier.name))}`
+  return `/fornecedores/detalhe?slug=${encodeURIComponent(slugify(supplier.name))}`
 }
 
 function initials(name: string) {
