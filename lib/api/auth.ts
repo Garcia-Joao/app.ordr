@@ -3,8 +3,8 @@ import { apiFetch } from './client'
 export type AuthCompany = {
   id: string
   name: string
-  companyType?: 'BUSINESS' | 'SUPPLIER' | string
   isTest: boolean
+  companyType?: 'BUSINESS' | 'SUPPLIER' | string
   testSourceCompanyId?: string | null
   role: string
   systemRole?: 'ADMIN' | 'CUSTOM'
@@ -36,6 +36,7 @@ export type AuthUser = {
   companyId: string
   currentCompany?: AuthCompany | null
   companies?: AuthCompany[]
+  requiresCompanySelection?: boolean
   name?: string | null
   phone?: string | null
   photoBase64?: string | null

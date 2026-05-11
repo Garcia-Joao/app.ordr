@@ -34,7 +34,7 @@ function isSupplierCompany(user: Awaited<ReturnType<typeof me>>['user']) {
 }
 
 function hasMultipleCompanies(user: Awaited<ReturnType<typeof me>>['user']) {
-  return (user.companies?.length ?? 0) > 1
+  return Boolean(user.requiresCompanySelection) || (user.companies?.length ?? 0) > 1
 }
 
 function redirectAfterLogin(user: Awaited<ReturnType<typeof me>>['user'], router: ReturnType<typeof useRouter>) {

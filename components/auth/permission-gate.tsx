@@ -5,16 +5,19 @@ import { ShieldAlert } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
-import { canAny, getStoredUser } from '@/lib/permissions'
-import type { AuthCompany } from '@/lib/api/auth'
+import { canAny } from '@/lib/permissions'
+import type { AuthCompany, AuthUser } from '@/lib/api/auth'
 import { getFirstAllowedPath } from '@/lib/auth-routing'
 import { me } from '@/lib/api/auth'
-import type { AuthUser } from '@/lib/api/auth'
 
 const SUPPLIERS_APP_URL = process.env.NEXT_PUBLIC_SUPPLIERS_APP_URL || 'https://suppliers.panelordr.com.br/'
 
 function isSupplierCompany(company?: AuthCompany | null) {
   return String(company?.companyType ?? '').toUpperCase() === 'SUPPLIER'
+}
+
+function hasMultipleCompanies(user?: AuthUser | null) {
+  return Boolean(user?.requiresCompanySelection) || (user?.companies?.length ?? 0) > 1
 }
 
 type PermissionGateProps = {
@@ -37,31 +40,19 @@ export function usePermissionGuard(permissions: string[]) {
     async function syncUser() {
       setHasMounted(true)
 
-      const storedUser = getStoredUser()
-
-      if (storedUser) {
-        if (isSupplierCompany(storedUser.currentCompany)) {
-          if ((storedUser.companies?.length ?? 0) > 1) {
-            router.replace('/selecionar-empresa/')
-          } else {
-            window.location.href = SUPPLIERS_APP_URL
-          }
-          return
-        }
-
-        setUser(storedUser)
-        return
-      }
-
       try {
+        // Always validate with /auth/me. Do not trust stale localStorage here,
+        // otherwise a supplier can force /PDV after changing company/session.
         const result = await me()
 
         if (!isMounted) return
 
+        // Keep localStorage fresh, but do not dispatch here; otherwise the guard
+        // would react to its own update and loop.
         localStorage.setItem('ordr-user', JSON.stringify(result.user))
-        window.dispatchEvent(new Event('ordr-user-updated'))
+
         if (isSupplierCompany(result.user.currentCompany)) {
-          if ((result.user.companies?.length ?? 0) > 1) {
+          if (hasMultipleCompanies(result.user)) {
             router.replace('/selecionar-empresa/')
           } else {
             window.location.href = SUPPLIERS_APP_URL
@@ -74,35 +65,24 @@ export function usePermissionGuard(permissions: string[]) {
         if (!isMounted) return
 
         localStorage.removeItem('ordr-user')
-        window.dispatchEvent(new Event('ordr-user-updated'))
 
-        const next = pathname && pathname !== '/login' ? `?next=${pathname}` : ''
+        const next = pathname && pathname !== '/login' ? `?next=${encodeURIComponent(pathname)}` : ''
         router.replace(`/login${next}`)
       }
     }
 
     syncUser()
 
-    function handleUserUpdated() {
-      const nextUser = getStoredUser()
-      if (isSupplierCompany(nextUser?.currentCompany)) {
-        if ((nextUser?.companies?.length ?? 0) > 1) {
-          router.replace('/selecionar-empresa/')
-        } else {
-          window.location.href = SUPPLIERS_APP_URL
-        }
-        return
-      }
-      setUser(nextUser)
+    function handleStorageUpdated() {
+      // Cross-tab changes should be validated against the API again.
+      syncUser()
     }
 
-    window.addEventListener('storage', handleUserUpdated)
-    window.addEventListener('ordr-user-updated', handleUserUpdated)
+    window.addEventListener('storage', handleStorageUpdated)
 
     return () => {
       isMounted = false
-      window.removeEventListener('storage', handleUserUpdated)
-      window.removeEventListener('ordr-user-updated', handleUserUpdated)
+      window.removeEventListener('storage', handleStorageUpdated)
     }
   }, [pathname, router])
 
