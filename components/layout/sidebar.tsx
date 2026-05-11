@@ -24,6 +24,7 @@ import {
   CalendarDays,
   ShieldCheck,
   FileClock,
+  Truck,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { canAny, getStoredUser } from '@/lib/permissions'
@@ -108,6 +109,13 @@ const navGroups: NavGroup[] = [
         requiredPermissions: ['buys.view', 'buys.manage', 'stock.quickBuy', 'stock.purchase.create'],
       },
       {
+        href: '/fornecedores',
+        icon: Truck,
+        label: 'Fornecedores',
+        description: 'Tabelas de preços e contatos',
+        requiredPermissions: ['suppliers.view', 'suppliers.manage'],
+      },
+      {
         href: '/pessoas',
         icon: UserRoundCog,
         label: 'Pessoas',
@@ -138,7 +146,7 @@ const navGroups: NavGroup[] = [
       {
         href: '/impressoras',
         icon: Printer,
-        label: 'Impressões',
+        label: 'Impressoras',
         description: 'Tickets e térmicas',
         requiredPermissions: ['printers.view'],
       },

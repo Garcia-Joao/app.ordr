@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   UserCog,
   Users,
+  Truck,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { ElementType } from 'react'
@@ -81,25 +82,32 @@ const mobileNavItems: MobileNavItem[] = [
     priority: 7,
   },
   {
+    href: '/fornecedores',
+    label: 'Fornec.',
+    icon: Truck,
+    requiredPermissions: ['suppliers.view', 'suppliers.manage'],
+    priority: 8,
+  },
+  {
     href: '/relatorios',
     label: 'Relatórios',
     icon: BarChart3,
     requiredPermissions: ['reports.view'],
-    priority: 8,
+    priority: 9,
   },
   {
     href: '/acessos',
     label: 'Acessos',
     icon: ShieldCheck,
     requiredPermissions: ['roles.view', 'roles.manage', 'users.view', 'users.manage'],
-    priority: 9,
+    priority: 10,
   },
   {
     href: '/auditoria',
     label: 'Auditoria',
     icon: FileClock,
     requiredPermissions: ['audit.view'],
-    priority: 10,
+    priority: 11,
   },
 
   {
@@ -107,21 +115,21 @@ const mobileNavItems: MobileNavItem[] = [
     label: 'Pessoas',
     icon: UserCog,
     requiredPermissions: ['people.view', 'people.manage', 'staffEvaluations.view'],
-    priority: 11,
+    priority: 12,
   },
   {
     href: '/eventos',
     label: 'Eventos',
     icon: CalendarDays,
     requiredPermissions: ['events.view', 'events.manage'],
-    priority: 12,
+    priority: 13,
   },
   {
     href: '/configuracoes',
     label: 'Config.',
     icon: Settings,
     requiredPermissions: ['settings.view'],
-    priority: 13,
+    priority: 14,
   },
 ]
 

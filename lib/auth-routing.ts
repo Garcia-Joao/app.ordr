@@ -49,6 +49,11 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
     ],
   },
   {
+    path: '/fornecedores/',
+    label: 'Fornecedores',
+    permissions: ['suppliers.view', 'suppliers.manage'],
+  },
+  {
     path: '/eventos/',
     label: 'Eventos',
     permissions: ['events.view'],
@@ -65,7 +70,7 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
   },
   {
     path: '/impressoras/',
-    label: 'Impressões',
+    label: 'Impressoras',
     permissions: ['printers.view'],
   },
   {
