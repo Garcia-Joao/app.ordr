@@ -290,7 +290,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (normalizedPathname.startsWith('/compras')) return 'Compras'
     if (normalizedPathname.startsWith('/acessos')) return 'Acessos'
     if (normalizedPathname.startsWith('/auditoria')) return 'Auditoria'
-    if (normalizedPathname.startsWith('/impressoras')) return 'Impressoras'
+    if (normalizedPathname.startsWith('/impressoras')) return 'Impressões'
 
     return 'Ordr'
   }, [normalizedPathname])

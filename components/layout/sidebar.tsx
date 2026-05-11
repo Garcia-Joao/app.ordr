@@ -138,7 +138,7 @@ const navGroups: NavGroup[] = [
       {
         href: '/impressoras',
         icon: Printer,
-        label: 'Impressoras',
+        label: 'Impressões',
         description: 'Tickets e térmicas',
         requiredPermissions: ['printers.view'],
       },

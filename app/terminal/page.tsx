@@ -15,7 +15,7 @@ export default function TerminalDownloadPage() {
                     href="/impressoras"
                     className="text-sm font-bold text-primary hover:underline"
                 >
-                    ← Voltar para Impressoras
+                    ← Voltar para Impressões
                 </Link>
 
                 <div className="rounded-3xl border border-border bg-card p-6 shadow-xl">
@@ -85,7 +85,7 @@ export default function TerminalDownloadPage() {
                         </div>
 
                         <p className="mt-3 text-xs text-muted-foreground">
-                            Depois de instalar, volte para Impressoras e clique em “Abrir ORDR Terminal”.
+                            Depois de instalar, volte para Impressões e clique em “Abrir ORDR Terminal”.
                         </p>
                     </div>
                 </div>

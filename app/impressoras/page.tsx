@@ -20,15 +20,82 @@ import {
 import {
   createPrintPort,
   deletePrintPort,
+  getPrinterSettings,
   listPrintPorts,
   listPrintTerminals,
+  savePrinterSettings,
   updatePrintPort,
   type PrintPort,
+  type PrintTemplate,
+  type PrintTemplates,
   type PrintTerminal,
 } from '@/lib/api/printers'
 import { openOrdrTerminalWithFallback } from '@/lib/open-terminal'
 
 const TERMINAL_ONLINE_THRESHOLD_MS = 45 * 1000
+
+const DEFAULT_PRINT_TEMPLATES: PrintTemplates = {
+  orderTicket: {
+    kind: 'ORDER_TICKET',
+    config: {
+      headerText: '*** ORDR ***',
+      footerText: '',
+      enabledFields: {
+        logo: true,
+        portName: true,
+        orderId: true,
+        comanda: true,
+        comandaName: true,
+        observation: true,
+        items: true,
+        variations: true,
+        notes: true,
+        date: true,
+      },
+    },
+  },
+  buyList: {
+    kind: 'BUY_LIST',
+    config: {
+      headerText: '*** LISTA DE COMPRAS ***',
+      footerText: '',
+      enabledFields: {
+        requestTitle: true,
+        requestId: true,
+        supplierName: true,
+        eventName: true,
+        notes: true,
+        date: true,
+        checklistBoxes: true,
+        categories: true,
+        itemNotes: true,
+      },
+    },
+  },
+}
+
+function mergeTemplate(defaultTemplate: PrintTemplate, template?: PrintTemplate | null): PrintTemplate {
+  return {
+    ...defaultTemplate,
+    ...(template ?? {}),
+    config: {
+      ...defaultTemplate.config,
+      ...(template?.config ?? {}),
+      enabledFields: {
+        ...defaultTemplate.config.enabledFields,
+        ...(template?.config?.enabledFields ?? {}),
+      },
+    },
+  }
+}
+
+function mergeTemplates(templates?: PrintTemplates | null): PrintTemplates {
+  return {
+    orderTicket: mergeTemplate(DEFAULT_PRINT_TEMPLATES.orderTicket, templates?.orderTicket),
+    buyList: mergeTemplate(DEFAULT_PRINT_TEMPLATES.buyList, templates?.buyList),
+  }
+}
+
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—'
@@ -45,6 +112,7 @@ function formatDateTime(value?: string | null) {
 
 function isTerminalOnline(terminal: PrintTerminal) {
   if (!terminal.printTerminalEnabled) return false
+  if (terminal.status === 'online') return true
   if (!terminal.lastSeenAt) return false
 
   const lastSeen = new Date(terminal.lastSeenAt).getTime()
@@ -127,6 +195,8 @@ export default function ImpressorasPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [editingPort, setEditingPort] = useState<PrintPort | null>(null)
   const [isPortModalOpen, setIsPortModalOpen] = useState(false)
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [printTemplates, setPrintTemplates] = useState<PrintTemplates>(DEFAULT_PRINT_TEMPLATES)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,13 +209,15 @@ export default function ImpressorasPage() {
       setError(null)
       if (options?.silent) setIsRefreshing(true)
 
-      const [portsResult, terminalsResult] = await Promise.all([
+      const [portsResult, terminalsResult, settingsResult] = await Promise.all([
         listPrintPorts(),
         listPrintTerminals(),
+        getPrinterSettings(),
       ])
 
       setPorts(portsResult.ports)
       setTerminals(terminalsResult.terminals)
+      setPrintTemplates(mergeTemplates(settingsResult.printTemplates))
     } catch (err) {
       console.error(err)
       setError(err instanceof Error ? err.message : 'Não foi possível carregar ports e terminais.')
@@ -212,6 +284,24 @@ export default function ImpressorasPage() {
     }
   }
 
+  async function handleSaveTemplates(nextTemplates: PrintTemplates) {
+    try {
+      setIsSaving(true)
+      setError(null)
+      setMessage(null)
+
+      const result = await savePrinterSettings({ printTemplates: nextTemplates })
+      setPrintTemplates(mergeTemplates(result.printTemplates))
+      setIsTemplateModalOpen(false)
+      setMessage('Templates de impressão salvos com sucesso.')
+    } catch (err) {
+      console.error(err)
+      setError(err instanceof Error ? err.message : 'Não foi possível salvar os templates.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function handleDeletePort(port: PrintPort) {
     const confirmed = window.confirm(
       `Remover a port "${port.name}"? Categorias e produtos ligados a ela voltarão a ficar sem port configurada.`
@@ -244,9 +334,9 @@ export default function ImpressorasPage() {
           </div>
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-primary">ORDR Print</p>
-            <h1 className="text-2xl font-black tracking-tight text-foreground">Impressoras</h1>
+            <h1 className="text-2xl font-black tracking-tight text-foreground">Impressões</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Cadastre ports lógicas no app. O vínculo com impressoras físicas é feito no ORDR Terminal.
+              Configure ports, vínculos e templates de impressão. O vínculo com impressoras físicas é feito no ORDR Terminal.
             </p>
           </div>
         </div>
@@ -266,6 +356,13 @@ export default function ImpressorasPage() {
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Atualizar
+          </button>
+          <button
+            onClick={() => setIsTemplateModalOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-bold text-foreground transition hover:bg-accent/10"
+          >
+            <Settings2 className="h-4 w-4" />
+            Templates
           </button>
           <button
             onClick={handleCreatePort}
@@ -476,6 +573,29 @@ export default function ImpressorasPage() {
           </section>
 
           <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary/10 text-primary">
+                  <Settings2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-foreground">Templates de impressão</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Defina cabeçalho, rodapé e quais informações aparecem em pedidos e listas de compras.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTemplateModalOpen(true)}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground transition hover:bg-primary/90"
+              >
+                <Settings2 className="h-4 w-4" />
+                Configurar templates
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary/10 text-primary">
                 <Clock className="h-5 w-5" />
@@ -495,6 +615,14 @@ export default function ImpressorasPage() {
       </div>
 
       {blockingMessage && <BlockingOverlay message={blockingMessage} />}
+
+      {isTemplateModalOpen && (
+        <TemplateModal
+          templates={printTemplates}
+          onClose={() => setIsTemplateModalOpen(false)}
+          onSave={handleSaveTemplates}
+        />
+      )}
 
       {isPortModalOpen && (
         <PortModal
@@ -564,6 +692,152 @@ function BlockingOverlay({ message }: { message: string }) {
         <div>
           <p className="text-sm font-semibold text-foreground">{message}</p>
           <p className="text-xs text-muted-foreground">Aguarde enquanto finalizamos a operação.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TemplateModal({
+  templates,
+  onClose,
+  onSave,
+}: {
+  templates: PrintTemplates
+  onClose: () => void
+  onSave: (templates: PrintTemplates) => void
+}) {
+  const [draft, setDraft] = useState<PrintTemplates>(() => mergeTemplates(templates))
+  const orderFields = [
+    ['portName', 'Nome da port'],
+    ['orderId', 'ID do pedido'],
+    ['comanda', 'Comanda'],
+    ['comandaName', 'Nome da comanda'],
+    ['observation', 'Observação do pedido'],
+    ['items', 'Itens'],
+    ['variations', 'Variações'],
+    ['notes', 'Observações dos itens'],
+    ['date', 'Data/hora'],
+  ] as const
+  const buyFields = [
+    ['requestTitle', 'Título da requisição'],
+    ['requestId', 'ID da requisição'],
+    ['supplierName', 'Local/fornecedor'],
+    ['eventName', 'Evento vinculado'],
+    ['notes', 'Observações da requisição'],
+    ['date', 'Data/hora'],
+    ['checklistBoxes', 'Quadradinhos de checklist'],
+    ['categories', 'Categorias dos itens'],
+    ['itemNotes', 'Observações dos itens'],
+  ] as const
+
+  function patchTemplate(kind: keyof PrintTemplates, patch: Partial<PrintTemplate['config']>) {
+    setDraft((current) => ({
+      ...current,
+      [kind]: {
+        ...current[kind],
+        config: {
+          ...current[kind].config,
+          ...patch,
+          enabledFields: {
+            ...current[kind].config.enabledFields,
+            ...(patch.enabledFields ?? {}),
+          },
+        },
+      },
+    }))
+  }
+
+  function toggleField(kind: keyof PrintTemplates, field: string) {
+    patchTemplate(kind, {
+      enabledFields: {
+        [field]: !draft[kind].config.enabledFields[field],
+      },
+    })
+  }
+
+  function renderTemplateCard(
+    kind: keyof PrintTemplates,
+    title: string,
+    description: string,
+    fields: readonly (readonly [string, string])[],
+  ) {
+    const template = draft[kind]
+
+    return (
+      <section className="rounded-3xl border border-border bg-background p-4">
+        <div>
+          <h3 className="text-lg font-black text-foreground">{title}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <label className="grid gap-2 text-sm font-bold text-foreground">
+            Texto de cabeçalho
+            <textarea
+              value={template.config.headerText}
+              onChange={(event) => patchTemplate(kind, { headerText: event.target.value })}
+              rows={3}
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-foreground">
+            Texto de rodapé
+            <textarea
+              value={template.config.footerText}
+              onChange={(event) => patchTemplate(kind, { footerText: event.target.value })}
+              rows={3}
+              placeholder="Opcional"
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {fields.map(([field, label]) => (
+            <label key={field} className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-2 text-sm">
+              <span className="font-bold text-foreground">{label}</span>
+              <input
+                type="checkbox"
+                checked={template.config.enabledFields[field] !== false}
+                onChange={() => toggleField(kind, field)}
+              />
+            </label>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Templates</p>
+            <h2 className="mt-1 text-xl font-black text-foreground">Configurar impressões</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Essas opções ficam salvas no banco e serão usadas pelo Terminal, mesmo com API hospedada na nuvem.
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-muted-foreground transition hover:bg-accent/10 hover:text-foreground" type="button">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {renderTemplateCard('orderTicket', 'Pedidos / comandas', 'Define como os pedidos normais serão impressos.', orderFields)}
+          {renderTemplateCard('buyList', 'Lista de compras', 'Define a impressão de compras em formato checklist.', buyFields)}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-border p-5">
+          <button type="button" onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-sm font-bold transition hover:bg-accent/10">
+            Cancelar
+          </button>
+          <button type="button" onClick={() => onSave(draft)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-black text-primary-foreground transition hover:bg-primary/90">
+            <Save className="h-4 w-4" />
+            Salvar templates
+          </button>
         </div>
       </div>
     </div>

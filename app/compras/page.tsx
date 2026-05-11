@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { getStockProducts } from '@/lib/api/stock'
+import { listPrintPorts, type PrintPort } from '@/lib/api/printers'
 import { getCurrentEventDates, getEventDates, type EventDate } from '@/lib/api/events'
 import {
   cancelBuyRequest,
@@ -281,6 +282,8 @@ export default function ComprasPage() {
   const [selectedRequest, setSelectedRequest] = useState<BuyRequest | null>(null)
   const [receiveForm, setReceiveForm] = useState<ReceiveFormItem[]>([])
   const [eventDates, setEventDates] = useState<EventDate[]>([])
+  const [printPorts, setPrintPorts] = useState<PrintPort[]>([])
+  const [selectedShoppingListPortId, setSelectedShoppingListPortId] = useState('')
   const [cartItemQuantities, setCartItemQuantities] = useState<Record<string, string>>({})
 
   async function loadData() {
@@ -293,6 +296,7 @@ export default function ComprasPage() {
       stockProductsData,
       activeEventDatesData,
       plannedEventDatesData,
+      printPortsData,
     ] = await Promise.all([
       getBuyCart(),
       getBuyRequests(),
@@ -303,6 +307,7 @@ export default function ComprasPage() {
         to: toDateInputValue(plannedUntil),
         status: 'all',
       }),
+      listPrintPorts(),
     ])
 
     const visibleEventDates = mergeEventDates(
@@ -315,6 +320,8 @@ export default function ComprasPage() {
     setCart(cartData)
     setRequests(requestsData)
     setEventDates(visibleEventDates)
+    setPrintPorts(printPortsData.ports.filter((port) => port.active !== false))
+    setSelectedShoppingListPortId((current) => current || printPortsData.ports.find((port) => port.active !== false)?.id || '')
     setStockProducts(
       stockProductsData
         .filter(isBuyableStockProduct)
@@ -558,7 +565,7 @@ export default function ComprasPage() {
 
     try {
       setIsSaving(true)
-      await printBuyRequestShoppingList(request.id)
+      await printBuyRequestShoppingList(request.id, selectedShoppingListPortId || null)
     } catch (error: any) {
       console.error('Erro ao imprimir lista de compras:', error)
       alert(error?.message || 'Erro ao imprimir lista de compras.')
@@ -700,9 +707,24 @@ export default function ComprasPage() {
           </div>
         </div>
 
-        <div className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm text-muted-foreground sm:w-auto">
-          Carrinho: <span className="font-semibold text-foreground">{cart?.items.length ?? 0}</span> item{cart?.items.length === 1 ? '' : 's'} •{' '}
-          <span className="font-semibold text-foreground">{cartTotalItems}</span> qtd.
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <label className="grid gap-1 text-xs font-semibold text-muted-foreground sm:min-w-[230px]">
+            Port para lista de compras
+            <select
+              value={selectedShoppingListPortId}
+              onChange={(event) => setSelectedShoppingListPortId(event.target.value)}
+              className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground"
+            >
+              <option value="">Port padrão</option>
+              {printPorts.map((port) => (
+                <option key={port.id} value={port.id}>{port.name}</option>
+              ))}
+            </select>
+          </label>
+          <div className="rounded-xl border border-border bg-background px-4 py-2 text-sm text-muted-foreground">
+            Carrinho: <span className="font-semibold text-foreground">{cart?.items.length ?? 0}</span> item{cart?.items.length === 1 ? '' : 's'} •{' '}
+            <span className="font-semibold text-foreground">{cartTotalItems}</span> qtd.
+          </div>
         </div>
       </div>
 

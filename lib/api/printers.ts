@@ -66,6 +66,24 @@ export type PrintPortInput = {
   paperWidth?: number | null
 }
 
+
+export type PrintTemplateConfig = {
+  enabledFields: Record<string, boolean>
+  headerText: string
+  footerText: string
+}
+
+export type PrintTemplate = {
+  kind: 'ORDER_TICKET' | 'BUY_LIST'
+  config: PrintTemplateConfig
+  updatedAt?: string | null
+}
+
+export type PrintTemplates = {
+  orderTicket: PrintTemplate
+  buyList: PrintTemplate
+}
+
 export type OrderTicketTemplate = {
   showLogo: boolean
   showOrderId: boolean
@@ -150,6 +168,7 @@ export type PrinterSettings = {
   terminals?: PrintTerminal[]
   orderPrinterId: string | null
   orderTicketTemplate: OrderTicketTemplate
+  printTemplates?: PrintTemplates
 }
 
 export function getSystemPrinters() {
@@ -160,7 +179,7 @@ export function getPrinterSettings() {
   return apiFetch<PrinterSettings>('/printers/settings', { method: 'GET' })
 }
 
-export function savePrinterSettings(data: PrinterSettings) {
+export function savePrinterSettings(data: Partial<PrinterSettings> & { printTemplates?: PrintTemplates }) {
   return apiFetch<PrinterSettings>('/printers/settings', {
     method: 'PUT',
     body: JSON.stringify(data),

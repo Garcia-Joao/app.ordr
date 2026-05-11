@@ -151,9 +151,10 @@ export async function receiveBuyRequest(
   })
 }
 
-export async function printBuyRequestShoppingList(id: string): Promise<{ ok: true }> {
+export async function printBuyRequestShoppingList(id: string, portId?: string | null): Promise<{ ok: true; queuedCount?: number; failedCount?: number }> {
   return apiFetch(`/buys/${id}/print-shopping-list`, {
     method: 'POST',
+    body: JSON.stringify({ portId: portId || null }),
   })
 }
 

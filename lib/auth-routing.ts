@@ -65,7 +65,7 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
   },
   {
     path: '/impressoras/',
-    label: 'Impressoras',
+    label: 'Impressões',
     permissions: ['printers.view'],
   },
   {
