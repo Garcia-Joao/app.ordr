@@ -41,6 +41,7 @@ export type Supplier = {
   address?: string | null
   notes?: string | null
   photoUrl?: string | null
+  photoData?: string | null
   categories?: string[]
   active: boolean
   priceTables: SupplierPriceTable[]
@@ -57,6 +58,7 @@ export type SupplierInput = {
   address?: string | null
   notes?: string | null
   photoUrl?: string | null
+  photoData?: string | null
   categories?: string[] | string | null
   active?: boolean
   createDefaultTable?: boolean
@@ -99,8 +101,16 @@ export function updateSupplier(id: string, input: Partial<SupplierInput>) {
   })
 }
 
+export function deactivateSupplier(id: string) {
+  return apiFetch<Supplier>(`/suppliers/${id}/deactivate`, { method: 'PATCH' })
+}
+
+export function reactivateSupplier(id: string) {
+  return apiFetch<Supplier>(`/suppliers/${id}/reactivate`, { method: 'PATCH' })
+}
+
 export function deleteSupplier(id: string) {
-  return apiFetch<Supplier>(`/suppliers/${id}`, { method: 'DELETE' })
+  return apiFetch<{ deleted: boolean; supplierId: string }>(`/suppliers/${id}`, { method: 'DELETE' })
 }
 
 export function createSupplierPriceTable(supplierId: string, input: SupplierPriceTableInput) {
