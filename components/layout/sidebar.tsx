@@ -294,7 +294,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`group/sidebar relative flex h-screen flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-300 ease-out ${collapsed ? 'w-[78px]' : 'w-[272px]'
+      className={`ordr-redesign-sidebar group/sidebar relative flex h-screen flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-300 ease-out ${collapsed ? 'w-[78px]' : 'w-[292px]'
         }`}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-sidebar-primary/10 to-transparent" />
@@ -420,11 +420,12 @@ export function Sidebar() {
                             <Link
                               href={item.href}
                               title={collapsed ? item.label : undefined}
-                              className={`relative flex items-center rounded-2xl transition-all duration-200 ${collapsed
+                              data-active={isActive}
+                              className={`ordr-sidebar-link relative flex items-center rounded-2xl transition-all duration-200 ${collapsed
                                 ? 'mx-auto h-11 w-11 justify-center'
                                 : 'gap-3 px-3 py-3'
                                 } ${isActive
-                                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                                  ? 'text-sidebar-primary-foreground shadow-sm'
                                   : 'text-sidebar-foreground/78 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                                 }`}
                             >

@@ -218,7 +218,7 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      <nav className="mobile-bottom-nav-shell fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl lg:hidden">
+      <nav className="ordr-mobile-nav mobile-bottom-nav-shell fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl transition lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
           {primaryItems.map((item) => {
             const Icon = item.icon

@@ -372,7 +372,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!isPublicRoute && isCurrentCompanyBlocked && !normalizedPathname.startsWith('/configuracoes')) {
     return (
       <>
-        <div className="flex h-dvh overflow-hidden">
+        <div className="ordr-redesign-shell flex h-dvh overflow-hidden">
           <div className="hidden lg:flex">
             <Sidebar />
           </div>
@@ -466,7 +466,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="flex h-dvh overflow-hidden">
+      <div className="ordr-redesign-shell flex h-dvh overflow-hidden">
         <div className="hidden lg:flex">
           <Sidebar />
         </div>

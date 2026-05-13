@@ -695,7 +695,7 @@ export function AppToolbar({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4 lg:px-6 shrink-0">
+      <div className="ordr-topbar flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4 lg:px-6 shrink-0">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <h1 className="text-lg font-semibold text-foreground truncate">
             {title}
