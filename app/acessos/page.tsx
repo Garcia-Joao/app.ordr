@@ -114,9 +114,11 @@ function Modal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className={`flex max-h-[96vh] w-full ${maxWidth} flex-col overflow-hidden rounded-t-3xl border bg-card shadow-2xl sm:max-h-[92vh] sm:rounded-3xl`}>
-        <div className="flex items-start justify-between gap-3 border-b p-4 sm:p-5">
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className={`mobile-modal-shell flex h-[min(94svh,900px)] w-full ${maxWidth} flex-col overflow-hidden rounded-t-[2rem] border bg-card shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-3xl`}>
+        <div className="shrink-0 border-b bg-card/95 p-4 backdrop-blur sm:p-5">
+          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted sm:hidden" />
+          <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             {icon && (
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -132,15 +134,16 @@ function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
+          </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">{children}</div>
 
-        {footer && <div className="flex flex-col-reverse gap-2 border-t bg-muted/30 p-4 sm:flex-row sm:flex-wrap sm:justify-end">{footer}</div>}
+        {footer && <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:flex-wrap sm:justify-end sm:pb-4 [&>button]:min-h-11 [&>button]:w-full sm:[&>button]:w-auto">{footer}</div>}
       </div>
     </div>
   )

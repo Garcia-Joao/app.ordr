@@ -810,9 +810,11 @@ function ProductModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
-      <div className="flex max-h-[92svh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:mx-4 sm:max-h-[90vh] sm:rounded-xl">
-        <div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="flex h-[94svh] w-full max-w-5xl flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl sm:mx-4 sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
+        <div className="shrink-0 border-b border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted sm:hidden" />
+          <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-foreground">
             {product ? 'Editar Produto' : 'Novo Produto'}
           </h2>
@@ -820,13 +822,15 @@ function ProductModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-4 sm:space-y-6 sm:p-6">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:space-y-6 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
@@ -1021,21 +1025,25 @@ function ProductModal({
             </p>
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg font-medium"
-            >
-              Cancelar
-            </button>
+          </div>
 
-            <button
-              type="submit"
-              className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium"
-            >
-              {product ? 'Salvar' : 'Adicionar'}
-            </button>
+          <div className="shrink-0 border-t border-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:p-6 sm:pb-6">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-11 rounded-2xl bg-secondary px-4 py-3 font-bold text-secondary-foreground sm:min-w-32"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                className="min-h-11 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground shadow-sm sm:min-w-36"
+              >
+                {product ? 'Salvar' : 'Adicionar'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -1209,9 +1217,11 @@ function CategoryModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
-      <div className="w-full max-w-md rounded-t-3xl border border-border bg-card shadow-2xl sm:mx-4 sm:rounded-xl">
-        <div className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="flex h-auto max-h-[94svh] w-full max-w-md flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl sm:mx-4 sm:max-h-[90vh] sm:rounded-2xl">
+        <div className="shrink-0 border-b border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted sm:hidden" />
+          <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-foreground">
             {category ? 'Editar Categoria' : 'Nova Categoria'}
           </h2>
@@ -1219,15 +1229,17 @@ function CategoryModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-6">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
+            <label className="mb-2 block text-sm font-medium text-foreground">Nome</label>
             <input
               type="text"
               value={name}
@@ -1262,21 +1274,25 @@ function CategoryModal({
             </select>
           </div>
 
-          <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg font-medium"
-            >
-              Cancelar
-            </button>
+          </div>
 
-            <button
-              type="submit"
-              className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium"
-            >
-              {category ? 'Salvar' : 'Adicionar'}
-            </button>
+          <div className="shrink-0 border-t border-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:p-6 sm:pb-6">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-11 flex-1 rounded-2xl bg-secondary px-4 py-3 font-bold text-secondary-foreground"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                className="min-h-11 flex-1 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground shadow-sm"
+              >
+                {category ? 'Salvar' : 'Adicionar'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

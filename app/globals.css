@@ -426,3 +426,44 @@ html,
     box-shadow: 0 18px 50px color-mix(in srgb, black 18%, transparent);
   }
 }
+
+@media (max-width: 640px) {
+  .mobile-modal-shell {
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .ordr-app-main [role='dialog'],
+  .ordr-app-main [data-slot='dialog-content'],
+  .ordr-app-main [data-slot='alert-dialog-content'],
+  .ordr-app-main [data-slot='sheet-content'],
+  .ordr-app-main [data-slot='drawer-content'] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .ordr-app-main input,
+  .ordr-app-main select,
+  .ordr-app-main textarea {
+    border-radius: 1rem;
+    font-size: 16px;
+  }
+
+  .ordr-app-main button {
+    min-height: 42px;
+  }
+
+  .ordr-app-main .mobile-modal-shell input,
+  .ordr-app-main .mobile-modal-shell select,
+  .ordr-app-main .mobile-modal-shell textarea,
+  .ordr-app-main [role='dialog'] input,
+  .ordr-app-main [role='dialog'] select,
+  .ordr-app-main [role='dialog'] textarea {
+    min-height: 46px;
+  }
+
+  .ordr-app-main .mobile-modal-shell label,
+  .ordr-app-main [role='dialog'] label {
+    scroll-margin-top: 1rem;
+  }
+}
