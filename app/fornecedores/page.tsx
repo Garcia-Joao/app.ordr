@@ -24,6 +24,8 @@ import {
   Tags,
   X,
 } from "lucide-react";
+import { canAny, getStoredUser } from '@/lib/permissions';
+import type { AuthUser } from '@/lib/api/auth';
 import {
   addSupplierByOrdrCode,
   createSupplier,
@@ -195,6 +197,7 @@ export default function FornecedoresPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [ordrCode, setOrdrCode] = useState("");
@@ -219,6 +222,24 @@ export default function FornecedoresPage() {
   useEffect(() => {
     loadSuppliers();
   }, []);
+
+  useEffect(() => {
+    setAuthUser(getStoredUser());
+
+    function handleUserUpdated() {
+      setAuthUser(getStoredUser());
+    }
+
+    window.addEventListener('storage', handleUserUpdated);
+    window.addEventListener('ordr-user-updated', handleUserUpdated);
+
+    return () => {
+      window.removeEventListener('storage', handleUserUpdated);
+      window.removeEventListener('ordr-user-updated', handleUserUpdated);
+    };
+  }, []);
+
+  const canManageSuppliers = canAny(authUser, ['suppliers.manage']);
 
   const filteredSuppliers = useMemo(() => {
     const term = normalize(search);
@@ -276,6 +297,7 @@ export default function FornecedoresPage() {
 
 
   async function handleAddByCode() {
+    if (!canManageSuppliers) return;
     const code = ordrCode.trim();
     if (!code) return;
 
@@ -296,6 +318,7 @@ export default function FornecedoresPage() {
   }
 
   async function handleCreateSupplier() {
+    if (!canManageSuppliers) return;
     if (!supplierForm.name.trim()) return;
 
     setError("");
@@ -405,23 +428,27 @@ export default function FornecedoresPage() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setCodeModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-black text-primary transition hover:bg-primary/15"
-              >
-                <KeyRound className="h-4 w-4" />
-                Adicionar código ORDR
-              </button>
+              {canManageSuppliers && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCodeModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-black text-primary transition hover:bg-primary/15"
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    Adicionar código ORDR
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-lg transition hover:brightness-110"
-              >
-                <Plus className="h-4 w-4" />
-                Novo fornecedor local
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-lg transition hover:brightness-110"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Novo fornecedor local
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </section>

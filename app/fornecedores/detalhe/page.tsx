@@ -27,6 +27,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { canAny, getStoredUser } from '@/lib/permissions';
+import type { AuthUser } from '@/lib/api/auth';
 import {
   createSupplierPriceTable,
   createSupplierPriceTableItem,
@@ -290,6 +292,7 @@ export default function SupplierDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   const [modalKind, setModalKind] = useState<ModalKind>(null);
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
@@ -306,7 +309,24 @@ export default function SupplierDetailPage() {
     );
   }, [suppliers, wantedSlug]);
 
-  const canManage = Boolean(supplier?.canManage && !supplier?.readonly);
+  useEffect(() => {
+    setAuthUser(getStoredUser());
+
+    function handleUserUpdated() {
+      setAuthUser(getStoredUser());
+    }
+
+    window.addEventListener('storage', handleUserUpdated);
+    window.addEventListener('ordr-user-updated', handleUserUpdated);
+
+    return () => {
+      window.removeEventListener('storage', handleUserUpdated);
+      window.removeEventListener('ordr-user-updated', handleUserUpdated);
+    };
+  }, []);
+
+  const canManageSuppliers = canAny(authUser, ['suppliers.manage']);
+  const canManage = Boolean(canManageSuppliers && supplier?.canManage && !supplier?.readonly);
 
   const selectedTable = useMemo(() => {
     if (!supplier) return null;

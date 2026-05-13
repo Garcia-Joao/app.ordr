@@ -366,3 +366,63 @@ html,
   overflow: hidden;
 }
 
+
+@media (max-width: 1023px) {
+  .ordr-app-main {
+    background:
+      radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 13%, transparent), transparent 34rem),
+      radial-gradient(circle at bottom right, color-mix(in srgb, var(--primary) 8%, transparent), transparent 28rem),
+      var(--background);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ordr-app-main main,
+  .ordr-app-main section,
+  .ordr-app-main article,
+  .ordr-app-main form,
+  .ordr-app-main div {
+    min-width: 0;
+  }
+
+  .ordr-app-main h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .ordr-app-main table {
+    min-width: 720px;
+  }
+
+  .ordr-app-main button,
+  .ordr-app-main a,
+  .ordr-app-main input,
+  .ordr-app-main select,
+  .ordr-app-main textarea {
+    touch-action: manipulation;
+  }
+
+  .ordr-app-main input,
+  .ordr-app-main select,
+  .ordr-app-main textarea {
+    min-height: 44px;
+  }
+
+  .ordr-app-main .rounded-\[2rem\] {
+    border-radius: 1.35rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .ordr-app-main {
+    scroll-padding-bottom: 7rem;
+  }
+
+  .ordr-app-main main {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+
+  .ordr-app-main .shadow-2xl,
+  .ordr-app-main .shadow-xl {
+    box-shadow: 0 18px 50px color-mix(in srgb, black 18%, transparent);
+  }
+}

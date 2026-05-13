@@ -106,7 +106,7 @@ const navGroups: NavGroup[] = [
         icon: ShoppingCart,
         label: 'Compras',
         description: 'Pedidos de compra e recebimento',
-        requiredPermissions: ['buys.view', 'buys.manage', 'stock.quickBuy', 'stock.purchase.create'],
+        requiredPermissions: ['buys.view', 'buys.create', 'buys.manage', 'stock.quickBuy', 'stock.purchase.create'],
       },
       {
         href: '/fornecedores',
@@ -155,7 +155,7 @@ const navGroups: NavGroup[] = [
         icon: Monitor,
         label: 'Dispositivos',
         description: 'Terminais e acessos',
-        requiredPermissions: ['settings.view'],
+        requiredPermissions: ['devices.view', 'devices.manage', 'settings.view'],
       },
       {
         href: '/acessos',

@@ -288,6 +288,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (normalizedPathname.startsWith('/pessoas')) return 'Pessoas'
     if (normalizedPathname.startsWith('/eventos')) return 'Eventos'
     if (normalizedPathname.startsWith('/compras')) return 'Compras'
+    if (normalizedPathname.startsWith('/fornecedores')) return 'Fornecedores'
+    if (normalizedPathname.startsWith('/terminal')) return 'Terminal de impressão'
     if (normalizedPathname.startsWith('/acessos')) return 'Acessos'
     if (normalizedPathname.startsWith('/auditoria')) return 'Auditoria'
     if (normalizedPathname.startsWith('/impressoras')) return 'Impressões'
@@ -394,7 +396,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               }
             />
 
-            <main className="flex flex-1 items-center justify-center overflow-auto p-6 pb-24 lg:pb-6">
+            <main className="ordr-app-main flex flex-1 items-center justify-center overflow-auto p-4 pb-24 sm:p-6 lg:pb-6">
               <div className="w-full max-w-2xl rounded-3xl border border-destructive/25 bg-card p-6 shadow-xl">
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
@@ -488,7 +490,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             }
           />
 
-          <main className="flex-1 min-h-0 overflow-auto pb-24 lg:pb-0">
+          <main className="ordr-app-main flex-1 min-h-0 overflow-auto pb-24 lg:pb-0">
             {isCurrentCompanyTest && (
               <div className="border-b border-sky-500/25 bg-sky-500/10 px-4 py-2 text-sky-950 dark:text-sky-100 lg:px-6">
                 <div className="mx-auto flex max-w-7xl flex-col gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">

@@ -9,8 +9,10 @@ import {
   FileClock,
   CalendarDays,
   HandCoins,
+  Monitor,
   MoreHorizontal,
   Package,
+  Printer,
   Settings,
   ShieldCheck,
   ShoppingCart,
@@ -124,12 +126,27 @@ const mobileNavItems: MobileNavItem[] = [
     requiredPermissions: ['events.view', 'events.manage'],
     priority: 13,
   },
+
+  {
+    href: '/impressoras',
+    label: 'Impress.',
+    icon: Printer,
+    requiredPermissions: ['printers.view'],
+    priority: 14,
+  },
+  {
+    href: '/dispositivos',
+    label: 'Disposit.',
+    icon: Monitor,
+    requiredPermissions: ['devices.view', 'devices.manage', 'settings.view'],
+    priority: 15,
+  },
   {
     href: '/configuracoes',
     label: 'Config.',
     icon: Settings,
     requiredPermissions: ['settings.view'],
-    priority: 14,
+    priority: 16,
   },
 ]
 
@@ -176,8 +193,8 @@ export function MobileBottomNav() {
   return (
     <>
       {isMoreOpen && overflowItems.length > 0 && (
-        <div className="fixed inset-x-3 bottom-[86px] z-40 rounded-3xl border border-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl lg:hidden">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="fixed inset-x-3 bottom-[86px] z-40 max-h-[min(62dvh,520px)] overflow-y-auto rounded-3xl border border-border bg-card/95 p-3 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl lg:hidden">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {overflowItems.map((item) => {
               const Icon = item.icon
               const active = isRouteActive(pathname, item.href)
@@ -201,7 +218,7 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-2xl backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
           {primaryItems.map((item) => {
             const Icon = item.icon

@@ -43,10 +43,16 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
     label: 'Compras',
     permissions: [
       'buys.view',
+      'buys.create',
       'buys.manage',
       'stock.quickBuy',
       'stock.purchase.create',
     ],
+  },
+  {
+    path: '/fornecedores/',
+    label: 'Fornecedores',
+    permissions: ['suppliers.view', 'suppliers.manage'],
   },
   {
     path: '/eventos/',
@@ -69,9 +75,14 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
     permissions: ['printers.view'],
   },
   {
+    path: '/terminal/',
+    label: 'Terminal',
+    permissions: ['printers.view', 'printers.update'],
+  },
+  {
     path: '/dispositivos/',
     label: 'Dispositivos',
-    permissions: ['settings.view'],
+    permissions: ['devices.view', 'devices.manage', 'settings.view'],
   },
   {
     path: '/configuracoes/',
