@@ -417,7 +417,7 @@ export function OrderPanel({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-border bg-card/95 p-3 shadow-[0_-18px_40px_rgba(0,0,0,0.08)] backdrop-blur sm:p-4 lg:p-5">
+        <div className="pdv-order-panel-actions shrink-0 border-t border-border bg-card/95 p-3 shadow-[0_-18px_40px_rgba(0,0,0,0.08)] backdrop-blur sm:p-4 lg:p-5">
           <div className="mb-3 space-y-2 rounded-3xl border border-border bg-background/80 p-3 shadow-sm">
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Subtotal</span>
@@ -508,7 +508,7 @@ export function OrderPanel({
               />
             </div>
 
-            <div className="flex gap-2 border-t border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="flex gap-2 border-t border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
               <Button
                 variant="ghost"
                 onClick={() => {

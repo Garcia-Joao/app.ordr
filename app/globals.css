@@ -295,6 +295,13 @@ html,
     transform: translateY(-6px) scale(0.98);
   }
 }
+
+:root {
+  --ordr-mobile-nav-height: 5.85rem;
+  --ordr-mobile-nav-gap: 0.85rem;
+  --ordr-mobile-bottom-reserved: calc(var(--ordr-mobile-nav-height) + var(--ordr-mobile-nav-gap) + env(safe-area-inset-bottom));
+}
+
 @layer utilities {
   .safe-bottom {
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
@@ -318,6 +325,57 @@ html,
   textarea,
   button {
     font-size: 16px;
+  }
+
+  .ordr-app-main {
+    padding-bottom: var(--ordr-mobile-bottom-reserved) !important;
+    scroll-padding-bottom: var(--ordr-mobile-bottom-reserved);
+  }
+
+  .mobile-safe-bottom-space {
+    padding-bottom: var(--ordr-mobile-bottom-reserved) !important;
+  }
+
+  .mobile-safe-sticky-actions {
+    padding-bottom: calc(var(--ordr-mobile-bottom-reserved) + 0.75rem) !important;
+  }
+
+  .mobile-bottom-nav-shell {
+    min-height: var(--ordr-mobile-nav-height);
+  }
+
+  .mobile-more-panel {
+    bottom: calc(var(--ordr-mobile-nav-height) + env(safe-area-inset-bottom) + 0.5rem) !important;
+  }
+
+  .pdv-mobile-order-trigger {
+    bottom: var(--ordr-mobile-bottom-reserved) !important;
+  }
+
+  .pdv-mobile-order-sheet {
+    bottom: calc(var(--ordr-mobile-bottom-reserved) + 0.5rem) !important;
+    max-height: calc(100svh - var(--ordr-mobile-bottom-reserved) - 1rem) !important;
+    min-height: min(72svh, calc(100svh - var(--ordr-mobile-bottom-reserved) - 1rem)) !important;
+  }
+
+  .pdv-order-panel-actions {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .ordr-app-main [role='dialog'],
+  .ordr-app-main [data-slot='dialog-content'],
+  .ordr-app-main [data-slot='alert-dialog-content'],
+  .ordr-app-main [data-slot='sheet-content'],
+  .ordr-app-main [data-slot='drawer-content'] {
+    z-index: 80;
+  }
+
+  .ordr-app-main [data-slot='dialog-footer'],
+  .ordr-app-main [data-slot='alert-dialog-footer'],
+  .ordr-app-main [data-slot='sheet-footer'],
+  .ordr-app-main [data-slot='drawer-footer'],
+  .mobile-modal-shell > div:last-child {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
   }
 
   .mobile-card-list table,
@@ -413,7 +471,7 @@ html,
 
 @media (max-width: 640px) {
   .ordr-app-main {
-    scroll-padding-bottom: 7rem;
+    scroll-padding-bottom: var(--ordr-mobile-bottom-reserved);
   }
 
   .ordr-app-main main {

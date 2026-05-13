@@ -193,7 +193,7 @@ export function MobileBottomNav() {
   return (
     <>
       {isMoreOpen && overflowItems.length > 0 && (
-        <div className="fixed inset-x-3 bottom-[86px] z-40 max-h-[min(62dvh,520px)] overflow-y-auto rounded-3xl border border-border bg-card/95 p-3 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl lg:hidden">
+        <div className="mobile-more-panel fixed inset-x-3 z-40 max-h-[min(62dvh,520px)] overflow-y-auto rounded-3xl border border-border bg-card/95 p-3 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl lg:hidden">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {overflowItems.map((item) => {
               const Icon = item.icon
@@ -218,7 +218,7 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl lg:hidden">
+      <nav className="mobile-bottom-nav-shell fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-2xl ring-1 ring-primary/10 backdrop-blur-xl lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
           {primaryItems.map((item) => {
             const Icon = item.icon

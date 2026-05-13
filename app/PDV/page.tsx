@@ -960,7 +960,7 @@ export default function POSPage() {
       <button
         type="button"
         onClick={() => setShowMobileOrderPanel(true)}
-        className="fixed inset-x-4 bottom-24 z-30 flex items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-card/95 px-4 py-3 text-foreground shadow-2xl shadow-black/20 backdrop-blur-xl ring-1 ring-white/10 transition-transform active:scale-[0.98] lg:hidden"
+        className="pdv-mobile-order-trigger fixed inset-x-4 z-30 flex items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-card/95 px-4 py-3 text-foreground shadow-2xl shadow-black/20 backdrop-blur-xl ring-1 ring-white/10 transition-transform active:scale-[0.98] lg:hidden"
       >
         <span className="flex min-w-0 items-center gap-3 text-sm font-black">
           <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
@@ -991,7 +991,7 @@ export default function POSPage() {
           onClick={() => !isSubmittingOrder && setShowMobileOrderPanel(false)}
         >
           <div
-            className="absolute inset-x-0 bottom-0 flex max-h-[94svh] min-h-[72svh] flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl"
+            className="pdv-mobile-order-sheet absolute inset-x-3 flex max-h-[94svh] min-h-[72svh] flex-col overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mx-auto mt-3 h-1.5 w-14 shrink-0 rounded-full bg-muted" />
