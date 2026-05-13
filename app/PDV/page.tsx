@@ -987,14 +987,14 @@ export default function POSPage() {
 
       {showMobileOrderPanel && (
         <div
-          className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm lg:hidden"
+          className="pdv-mobile-order-backdrop fixed inset-0 z-[120] flex items-end bg-black/50 p-3 backdrop-blur-sm lg:hidden"
           onClick={() => !isSubmittingOrder && setShowMobileOrderPanel(false)}
         >
           <div
-            className="pdv-mobile-order-sheet absolute inset-x-3 flex max-h-[94svh] min-h-[72svh] flex-col overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl"
+            className="pdv-mobile-order-sheet relative flex w-full flex-col overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mx-auto mt-3 h-1.5 w-14 shrink-0 rounded-full bg-muted" />
+            <div className="mx-auto mt-2.5 h-1.5 w-14 shrink-0 rounded-full bg-muted" />
             <div className="min-h-0 flex-1 overflow-hidden">
               <OrderPanel
                 items={currentOrderItems}

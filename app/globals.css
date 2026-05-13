@@ -525,3 +525,33 @@ html,
     scroll-margin-top: 1rem;
   }
 }
+
+@media (max-width: 1023px) {
+  .pdv-mobile-order-backdrop {
+    padding-top: calc(env(safe-area-inset-top) + 0.75rem) !important;
+    padding-bottom: calc(var(--ordr-mobile-bottom-reserved) + 0.75rem) !important;
+  }
+
+  .pdv-mobile-order-sheet {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: min(88svh, calc(100svh - var(--ordr-mobile-bottom-reserved) - env(safe-area-inset-top) - 1.5rem)) !important;
+    max-height: calc(100svh - var(--ordr-mobile-bottom-reserved) - env(safe-area-inset-top) - 1.5rem) !important;
+    min-height: 0 !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-actions {
+    padding: 0.75rem !important;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-payment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-payment-button {
+    min-height: 3.25rem;
+  }
+}

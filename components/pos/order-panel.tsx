@@ -445,23 +445,23 @@ export function OrderPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={() => onCharge('money')} disabled={actionDisabled} className="h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+          <div className="pdv-order-payment-grid grid grid-cols-2 gap-2">
+            <Button onClick={() => onCharge('money')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Banknote className="mr-2 h-4 w-4" />}
               Dinheiro
             </Button>
 
-            <Button onClick={() => onCharge('pix')} disabled={actionDisabled} className="h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+            <Button onClick={() => onCharge('pix')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
               Pix
             </Button>
 
-            <Button onClick={() => onCharge('credit')} disabled={actionDisabled} className="h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
+            <Button onClick={() => onCharge('credit')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
               Crédito
             </Button>
 
-            <Button onClick={() => onCharge('debit')} disabled={actionDisabled} className="h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
+            <Button onClick={() => onCharge('debit')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
               Débito
             </Button>
