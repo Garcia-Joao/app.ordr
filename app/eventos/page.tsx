@@ -1746,8 +1746,8 @@ export default function EventosPage() {
       )}
 
       {modalMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="mobile-modal-shell flex h-[94svh] w-full max-w-4xl flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
@@ -1774,7 +1774,7 @@ export default function EventosPage() {
               </button>
             </div>
 
-            <div className="max-h-[72vh] overflow-y-auto p-5">
+            <div className="event-main-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
               {modalMode === "template" ? (
                 <div className="space-y-5">
                   <ModalSectionHeader
@@ -2080,7 +2080,7 @@ export default function EventosPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-border px-5 py-4">
+            <div className="ordr-mobile-modal-footer flex justify-end gap-3 border-t border-border bg-card px-4 py-4 sm:px-5">
               <button
                 onClick={() => setModalMode(null)}
                 className="h-10 rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-secondary"

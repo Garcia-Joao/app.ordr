@@ -850,7 +850,7 @@ function CustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
-      <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:max-h-[92vh] sm:rounded-2xl">
+      <div className="mobile-modal-shell flex h-[94svh] w-full max-w-6xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
@@ -872,7 +872,7 @@ function CustomerModal({
 
         <form
           onSubmit={handleSubmit}
-          className={`grid min-h-0 flex-1 grid-cols-1 overflow-y-auto ${canLinkEventComanda ? 'lg:grid-cols-[1fr_390px]' : ''}`}
+          className={`customer-modal-form grid min-h-0 flex-1 grid-cols-1 overflow-y-auto ${canLinkEventComanda ? 'lg:grid-cols-[1fr_390px]' : ''}`}
         >
           <div className="space-y-5 overflow-y-visible p-4 sm:p-6 lg:overflow-y-auto">
             {!customer && (

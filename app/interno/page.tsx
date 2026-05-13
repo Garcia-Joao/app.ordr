@@ -1247,7 +1247,7 @@ export default function InternoPage() {
           )}
         </main>
 
-        <aside className="flex min-h-0 flex-col border-t border-border bg-card lg:border-l lg:border-t-0 lg:overflow-hidden">
+        <aside className="interno-account-panel flex min-h-0 flex-col border-t border-border bg-card lg:border-l lg:border-t-0 lg:overflow-hidden">
           {!selectedCustomer ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground px-6">
               A conta do cliente aparece aqui
@@ -1311,7 +1311,7 @@ export default function InternoPage() {
 
               {rightTab === 'cart' ? (
                 <>
-                  <div className="min-h-0 flex-1 overflow-visible p-4 lg:overflow-y-auto">
+                  <div className="interno-account-scroll min-h-0 flex-1 overflow-visible p-4 lg:overflow-y-auto">
                     <div className="rounded-xl border border-border bg-background p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <ShoppingBasket className="h-4 w-4 text-primary" />
@@ -1397,7 +1397,7 @@ export default function InternoPage() {
                     </div>
                   </div>
 
-                  <div className="border-t border-border p-4 bg-card space-y-3">
+                  <div className="interno-payment-actions border-t border-border bg-card p-4 space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Total</span>
                       <span className="font-semibold text-foreground">
@@ -1429,7 +1429,7 @@ export default function InternoPage() {
                 </>
               ) : (
                 <>
-                  <div className="min-h-0 flex-1 space-y-5 overflow-visible p-4 lg:overflow-y-auto">
+                  <div className="interno-account-scroll min-h-0 flex-1 space-y-5 overflow-visible p-4 lg:overflow-y-auto">
                     <section>
                       <div className="flex items-center justify-between mb-3">
                         <div>
@@ -1627,7 +1627,7 @@ export default function InternoPage() {
                     </section>
                   </div>
 
-                  <div className="border-t border-border p-4 bg-card">
+                  <div className="interno-payment-actions border-t border-border bg-card p-4">
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => handlePaySelected('money')}

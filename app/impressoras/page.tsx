@@ -820,8 +820,8 @@ function TemplateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="mobile-modal-shell flex h-[94svh] w-full max-w-5xl flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-3xl">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Templates</p>
@@ -840,7 +840,7 @@ function TemplateModal({
           {renderTemplateCard('buyList', 'Lista de compras', 'Define a impressão de compras em formato checklist.', buyFields)}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border p-5">
+        <div className="ordr-mobile-modal-footer flex justify-end gap-2 border-t border-border bg-card p-4 sm:p-5">
           <button type="button" onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-sm font-bold transition hover:bg-accent/10">
             Cancelar
           </button>
@@ -881,8 +881,8 @@ function PortModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="mobile-modal-shell flex h-auto max-h-[94svh] w-full max-w-lg flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl sm:max-h-[92vh] sm:rounded-3xl">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Port lógica</p>
@@ -896,7 +896,7 @@ function PortModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
           <label className="grid gap-2 text-sm font-bold text-foreground">
             Nome da port
             <input
@@ -932,7 +932,7 @@ function PortModal({
             Depois de salvar, abra o ORDR Terminal para escolher qual impressora local atende esta port.
           </div>
 
-          <div className="flex justify-end gap-2 pt-3">
+          <div className="ordr-mobile-modal-footer -mx-4 flex justify-end gap-2 border-t border-border bg-card px-4 pt-4 sm:-mx-5 sm:px-5">
             <button type="button" onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-sm font-bold transition hover:bg-accent/10">
               Cancelar
             </button>

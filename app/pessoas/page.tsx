@@ -761,7 +761,7 @@ export default function PessoasPage() {
                                         </div>
 
                                         <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                                                 <p className="font-semibold text-foreground truncate">
                                                     {person.name}
                                                 </p>
@@ -903,8 +903,8 @@ export default function PessoasPage() {
 
 
             {showModal && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl bg-card border border-border shadow-2xl flex flex-col">
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+                    <div className="mobile-modal-shell flex h-[94svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
                         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                             <div>
                                 <h2 className="text-lg font-semibold text-foreground">
@@ -923,7 +923,7 @@ export default function PessoasPage() {
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        <div className="person-modal-body min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:space-y-6 sm:p-6">
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-sm font-medium text-foreground">Nome</label>
@@ -1200,7 +1200,7 @@ export default function PessoasPage() {
                             </div>
                         </div>
 
-                        <div className="px-6 py-4 border-t border-border bg-card flex items-center justify-between gap-3">
+                        <div className="ordr-mobile-modal-footer flex flex-col gap-3 border-t border-border bg-card px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                             <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                                 <input
                                     type="checkbox"
@@ -1212,7 +1212,7 @@ export default function PessoasPage() {
                                 Pessoa ativa
                             </label>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                                 <button
                                     onClick={() => setShowModal(false)}
                                     className="h-10 px-4 rounded-xl border border-border hover:bg-secondary"
@@ -1328,7 +1328,7 @@ function EventEvaluationItemCard({
                 }`}
             >
                 <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                         <p className="font-medium text-foreground">
                             {isOutros ? 'Outros' : evaluation.functionName}
                         </p>

@@ -142,8 +142,8 @@ export default function DispositivosPage() {
   }, [devices])
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-background">
-      <div className="border-b border-border bg-card px-6 py-5">
+    <div className="flex min-h-full flex-col overflow-visible bg-background lg:h-full lg:overflow-hidden mobile-page-scroll">
+      <div className="border-b border-border bg-card px-4 py-4 sm:px-6 sm:py-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -174,7 +174,7 @@ export default function DispositivosPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 border-b border-border bg-card/50 p-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 border-b border-border bg-card/50 p-4 sm:gap-4 sm:p-6 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={<Power className="h-5 w-5" />}
           label="Dispositivos online"
@@ -202,12 +202,12 @@ export default function DispositivosPage() {
       </div>
 
       {error && (
-        <div className="mx-6 mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
+        <div className="mx-4 mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive sm:mx-6">
           {error}
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-visible p-4 sm:p-6 lg:overflow-y-auto">
         {isLoading ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -257,7 +257,7 @@ function DeviceCard({ device, onDelete }: { device: CompanyDevice; onDelete: () 
   const currentUserName = device.currentUser?.name || device.currentUser?.username || 'Nenhum usuário identificado'
 
   return (
-    <div className="group rounded-3xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/45 hover:shadow-lg">
+    <div className="group rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/45 hover:shadow-lg sm:rounded-3xl sm:p-5">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${isOnline ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'}`}>

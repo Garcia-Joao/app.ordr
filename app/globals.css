@@ -571,3 +571,138 @@ html,
     min-height: 3.25rem;
   }
 }
+
+
+/* ORDR mobile modal polish - shared fallback for custom overlays that do not use the UI Dialog components. */
+@media (max-width: 767px) {
+  body:has(.ordr-app-main .fixed.inset-0) .mobile-bottom-nav-shell,
+  body:has(.ordr-app-main .fixed.inset-0) .mobile-more-panel,
+  html[data-ordr-mobile-overlay-open] .mobile-bottom-nav-shell,
+  html[data-ordr-mobile-overlay-open] .mobile-more-panel {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(120%) !important;
+  }
+
+  .ordr-app-main .fixed.inset-0 {
+    align-items: flex-end !important;
+    padding: 0 !important;
+    z-index: 90 !important;
+  }
+
+  .ordr-app-main .fixed.inset-0 > .mobile-modal-shell,
+  .ordr-app-main .fixed.inset-0 > .ordr-mobile-modal-shell,
+  .ordr-app-main .fixed.inset-0 > div:not([data-radix-popper-content-wrapper]):not(.mobile-more-panel) {
+    width: 100% !important;
+    max-width: none !important;
+    height: min(94svh, calc(100svh - env(safe-area-inset-top) - 0.5rem)) !important;
+    max-height: min(94svh, calc(100svh - env(safe-area-inset-top) - 0.5rem)) !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border-right-width: 0 !important;
+    border-left-width: 0 !important;
+    border-bottom-width: 0 !important;
+    border-radius: 1.75rem 1.75rem 0 0 !important;
+    box-shadow: 0 -24px 70px color-mix(in srgb, black 26%, transparent) !important;
+  }
+
+  .ordr-app-main .fixed.inset-0 > div:not([data-radix-popper-content-wrapper]):not(.mobile-more-panel)::before {
+    content: '';
+    width: 3rem;
+    height: 0.35rem;
+    margin: 0.65rem auto 0;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: hsl(var(--muted));
+  }
+
+  .ordr-app-main .fixed.inset-0 > div > form,
+  .ordr-app-main .fixed.inset-0 > div > .modal-scroll-body,
+  .ordr-app-main .fixed.inset-0 > div > .mobile-modal-body,
+  .ordr-app-main .fixed.inset-0 > div > div[class*='overflow-y-auto'],
+  .ordr-app-main .fixed.inset-0 > div > form > div[class*='overflow-y-auto'],
+  .ordr-app-main .fixed.inset-0 > div > form > div[class*='flex-1'] {
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .ordr-app-main .fixed.inset-0 > div > div:first-child,
+  .ordr-app-main .fixed.inset-0 > div > header,
+  .ordr-app-main .fixed.inset-0 > div > form > div:first-child {
+    flex-shrink: 0 !important;
+  }
+
+  .ordr-app-main .fixed.inset-0 > div > div:last-child,
+  .ordr-app-main .fixed.inset-0 > div > form > div:last-child,
+  .ordr-mobile-modal-footer {
+    flex-shrink: 0 !important;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+    background: hsl(var(--card) / 0.98) !important;
+    backdrop-filter: blur(14px);
+  }
+
+  .ordr-app-main .fixed.inset-0 .grid[class*='grid-cols-\['],
+  .ordr-app-main .fixed.inset-0 .grid[class*='md:grid-cols'],
+  .ordr-app-main .fixed.inset-0 .grid[class*='lg:grid-cols'] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ordr-app-main .fixed.inset-0 .flex.justify-end,
+  .ordr-app-main .fixed.inset-0 .flex.items-center.justify-end,
+  .ordr-app-main .fixed.inset-0 .flex.items-center.justify-between {
+    flex-wrap: wrap;
+  }
+
+  .ordr-app-main .fixed.inset-0 button[type='submit'],
+  .ordr-app-main .fixed.inset-0 button:not([type]),
+  .ordr-app-main .fixed.inset-0 button[type='button'] {
+    min-height: 44px;
+  }
+
+  .ordr-app-main .fixed.inset-0 form > div:last-child button,
+  .ordr-app-main .fixed.inset-0 > div > div:last-child button {
+    flex: 1 1 140px;
+  }
+
+  .interno-account-panel {
+    margin: 0.75rem;
+    overflow: hidden !important;
+    border-radius: 1.5rem;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 18px 55px color-mix(in srgb, black 14%, transparent);
+  }
+
+  .interno-account-panel > div:first-child {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: hsl(var(--card) / 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  .interno-account-panel .interno-account-scroll {
+    max-height: 62svh;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .interno-account-panel .interno-payment-actions {
+    position: sticky;
+    bottom: 0;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
+    background: hsl(var(--card) / 0.98) !important;
+    backdrop-filter: blur(14px);
+  }
+
+  .stock-item-modal-form,
+  .event-main-modal-body,
+  .person-modal-body,
+  .customer-modal-form {
+    padding-bottom: 1rem;
+  }
+}

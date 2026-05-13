@@ -7971,7 +7971,7 @@ function StockItemModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
-      <div className="w-full max-w-5xl rounded-2xl bg-card border border-border shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="mobile-modal-shell flex h-[94svh] w-full max-w-5xl flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-xl sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
         <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
             <h2 className="font-semibold text-foreground">
@@ -7994,7 +7994,7 @@ function StockItemModal({
 
         <form
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-5 space-y-5"
+          className="stock-item-modal-form min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-5"
         >
           <section className="rounded-xl border border-border bg-background p-4 space-y-4">
             <div className="grid grid-cols-[1fr_100px] gap-4">
@@ -9004,7 +9004,7 @@ function StockItemModal({
             </section>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+          <div className="ordr-mobile-modal-footer sticky bottom-0 -mx-4 flex items-center justify-end gap-2 border-t border-border bg-card px-4 py-3 sm:-mx-5 sm:px-5">
             <button
               type="button"
               onClick={onClose}
