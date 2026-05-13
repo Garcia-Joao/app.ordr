@@ -607,10 +607,6 @@ export default function POSPage() {
 
         return [...prev, newItem]
       })
-
-      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-        setShowMobileOrderPanel(true)
-      }
     },
     [isSubmittingOrder]
   )
@@ -964,18 +960,25 @@ export default function POSPage() {
       <button
         type="button"
         onClick={() => setShowMobileOrderPanel(true)}
-        className="fixed inset-x-4 bottom-24 z-30 flex items-center justify-between rounded-2xl border border-border bg-primary px-4 py-3 text-primary-foreground shadow-2xl lg:hidden"
+        className="fixed inset-x-4 bottom-24 z-30 flex items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-card/95 px-4 py-3 text-foreground shadow-2xl shadow-black/20 backdrop-blur-xl ring-1 ring-white/10 transition-transform active:scale-[0.98] lg:hidden"
       >
-        <span className="flex items-center gap-2 text-sm font-bold">
-          <ShoppingCart className="h-5 w-5" />
-          Pedido
-          {currentOrderItems.length > 0 && (
-            <span className="rounded-full bg-primary-foreground/20 px-2 py-0.5 text-xs">
-              {currentOrderItems.reduce((sum, item) => sum + item.quantity, 0)}
+        <span className="flex min-w-0 items-center gap-3 text-sm font-black">
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <ShoppingCart className="h-5 w-5" />
+            {currentOrderItems.length > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex min-w-6 items-center justify-center rounded-full border-2 border-card bg-destructive px-1.5 py-0.5 text-[10px] font-black leading-none text-destructive-foreground">
+                {currentOrderItems.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate">Ver pedido</span>
+            <span className="block truncate text-xs font-semibold text-muted-foreground">
+              {currentOrderItems.length > 0 ? 'Toque para revisar e cobrar' : 'Nenhum item adicionado'}
             </span>
-          )}
+          </span>
         </span>
-        <span className="text-sm font-black">
+        <span className="shrink-0 rounded-2xl bg-primary/10 px-3 py-2 text-sm font-black text-primary">
           {currentOrderItems
             .reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0)
             .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -983,26 +986,16 @@ export default function POSPage() {
       </button>
 
       {showMobileOrderPanel && (
-        <div className="fixed inset-0 z-[80] bg-black/45 backdrop-blur-sm lg:hidden">
-          <div className="absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div>
-                <p className="text-sm font-bold text-foreground">Pedido atual</p>
-                <p className="text-xs text-muted-foreground">
-                  {currentOrderItems.length} item{currentOrderItems.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowMobileOrderPanel(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-foreground"
-                aria-label="Fechar pedido"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <div
+          className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => !isSubmittingOrder && setShowMobileOrderPanel(false)}
+        >
+          <div
+            className="absolute inset-x-0 bottom-0 flex max-h-[94svh] min-h-[72svh] flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mt-3 h-1.5 w-14 shrink-0 rounded-full bg-muted" />
             <div className="min-h-0 flex-1 overflow-hidden">
-
               <OrderPanel
                 items={currentOrderItems}
                 orderId={currentOrderId}
@@ -1026,6 +1019,7 @@ export default function POSPage() {
                   setPrintItemModes((current) => ({ ...current, [itemKey]: mode }))
                 }
                 isLoading={isSubmittingOrder}
+                onClose={() => setShowMobileOrderPanel(false)}
               />
             </div>
           </div>
