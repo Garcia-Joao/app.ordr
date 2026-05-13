@@ -4,11 +4,34 @@ import * as React from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
 
 import { cn } from '@/lib/utils'
+import { setMobileOverlayOpen } from '@/lib/mobile-overlay-state'
 
 function Drawer({
+  onOpenChange,
+  open,
+  defaultOpen,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+  const overlayId = React.useId()
+
+  React.useEffect(() => {
+    setMobileOverlayOpen(overlayId, Boolean(open ?? defaultOpen))
+
+    return () => setMobileOverlayOpen(overlayId, false)
+  }, [defaultOpen, open, overlayId])
+
+  return (
+    <DrawerPrimitive.Root
+      data-slot="drawer"
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={(nextOpen) => {
+        setMobileOverlayOpen(overlayId, nextOpen)
+        onOpenChange?.(nextOpen)
+      }}
+      {...props}
+    />
+  )
 }
 
 function DrawerTrigger({

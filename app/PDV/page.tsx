@@ -23,6 +23,7 @@ import type {
   PaymentMethod,
 } from '@/lib/pos-types'
 import { formatBRL, getItemPrice } from '@/lib/pos-types'
+import { setMobileOverlayOpen } from '@/lib/mobile-overlay-state'
 
 import { createOrder, getCategories, getProducts } from '@/lib/api'
 import { getStockProducts } from '@/lib/api/stock'
@@ -362,6 +363,18 @@ export default function POSPage() {
       setActiveEventDate(eventDate ?? getActiveEventDate())
     })
   }, [])
+
+  useEffect(() => {
+    setMobileOverlayOpen('pdv-mobile-order-panel', showMobileOrderPanel)
+
+    return () => setMobileOverlayOpen('pdv-mobile-order-panel', false)
+  }, [showMobileOrderPanel])
+
+  useEffect(() => {
+    setMobileOverlayOpen('pdv-ticket-preview', Boolean(selectedOrder))
+
+    return () => setMobileOverlayOpen('pdv-ticket-preview', false)
+  }, [selectedOrder])
 
   useEffect(() => {
     async function lookupComandaCustomer() {

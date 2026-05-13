@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Minus,
   Plus,
@@ -102,6 +102,7 @@ export function OrderPanel({
   const [isOrderObservationOpen, setIsOrderObservationOpen] = useState(false)
   const [editingNotesItemKey, setEditingNotesItemKey] = useState<string | null>(null)
   const [editingNotesValue, setEditingNotesValue] = useState('')
+  const [mobileStep, setMobileStep] = useState<'items' | 'payment'>('items')
 
   const subtotal = items.reduce(
     (sum, item) => sum + getItemPrice(item) * item.quantity,
@@ -117,6 +118,71 @@ export function OrderPanel({
   const editingItem = editingNotesItemKey
     ? items.find((item) => getItemKey(item) === editingNotesItemKey)
     : null
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setMobileStep('items')
+    }
+  }, [items.length])
+
+  const summaryContent = (
+    <div className="mb-3 space-y-2 rounded-3xl border border-border bg-background/80 p-3 shadow-sm">
+      <div className="flex justify-between text-sm text-muted-foreground">
+        <span>Subtotal</span>
+        <span className="font-semibold text-foreground">{formatBRL(subtotal)}</span>
+      </div>
+
+      <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>Taxa ({Math.round(taxRate * 100)}%)</span>
+        <span className="flex items-center gap-2">
+          <span className="font-semibold text-foreground">{formatBRL(tax)}</span>
+          <input
+            type="checkbox"
+            checked={applyTax}
+            disabled={isLoading}
+            onChange={(e) => onSetApplyTax(e.target.checked)}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            title="Aplicar taxa"
+          />
+        </span>
+      </label>
+
+      <div className="flex justify-between border-t border-border pt-2 text-xl font-black text-foreground">
+        <span>Total</span>
+        <span className="text-primary">{formatBRL(total)}</span>
+      </div>
+    </div>
+  )
+
+  const paymentButtons = (
+    <div className="pdv-order-payment-grid grid grid-cols-2 gap-2">
+      <Button onClick={() => onCharge('money')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Banknote className="mr-2 h-4 w-4" />}
+        Dinheiro
+      </Button>
+
+      <Button onClick={() => onCharge('pix')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
+        Pix
+      </Button>
+
+      <Button onClick={() => onCharge('credit')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
+        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+        Crédito
+      </Button>
+
+      <Button onClick={() => onCharge('debit')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
+        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+        Débito
+      </Button>
+    </div>
+  )
+
+  const comandaWarning = items.length > 0 && requireComanda && comandaNumber === null && !isLoading ? (
+    <p className="mt-2 rounded-2xl bg-warning/10 px-3 py-2 text-center text-xs font-bold text-warning">
+      Informe o número da comanda para finalizar
+    </p>
+  ) : null
 
   function openItemNotes(item: OrderItem) {
     const itemKey = getItemKey(item)
@@ -253,9 +319,36 @@ export function OrderPanel({
               </div>
             )}
           </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-background/80 p-1 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileStep('items')}
+              className={`rounded-xl px-3 py-2 text-xs font-black transition-colors ${
+                mobileStep === 'items'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+              }`}
+            >
+              Produtos
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileStep('payment')}
+              disabled={items.length === 0}
+              className={`rounded-xl px-3 py-2 text-xs font-black transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                mobileStep === 'payment'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+              }`}
+            >
+              Pagamento
+            </button>
+          </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-background/35 p-3 sm:p-4">
+        <div className={`min-h-0 flex-1 overflow-y-auto bg-background/35 p-3 sm:p-4 ${mobileStep === 'payment' ? 'hidden lg:block' : ''}`}>
           {items.length === 0 ? (
             <div className="flex h-full min-h-[220px] flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card/70 px-6 py-10 text-center text-muted-foreground">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
@@ -417,61 +510,54 @@ export function OrderPanel({
           )}
         </div>
 
-        <div className="pdv-order-panel-actions shrink-0 border-t border-border bg-card/95 p-3 shadow-[0_-18px_40px_rgba(0,0,0,0.08)] backdrop-blur sm:p-4 lg:p-5">
-          <div className="mb-3 space-y-2 rounded-3xl border border-border bg-background/80 p-3 shadow-sm">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Subtotal</span>
-              <span className="font-semibold text-foreground">{formatBRL(subtotal)}</span>
-            </div>
-
-            <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-muted-foreground">
-              <span>Taxa ({Math.round(taxRate * 100)}%)</span>
-              <span className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">{formatBRL(tax)}</span>
-                <input
-                  type="checkbox"
-                  checked={applyTax}
-                  disabled={isLoading}
-                  onChange={(e) => onSetApplyTax(e.target.checked)}
-                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                  title="Aplicar taxa"
-                />
-              </span>
-            </label>
-
-            <div className="flex justify-between border-t border-border pt-2 text-xl font-black text-foreground">
-              <span>Total</span>
-              <span className="text-primary">{formatBRL(total)}</span>
-            </div>
+        <div className={`pdv-order-panel-actions border-t border-border bg-card/95 p-3 shadow-[0_-18px_40px_rgba(0,0,0,0.08)] backdrop-blur sm:p-4 lg:shrink-0 lg:p-5 ${mobileStep === 'payment' ? 'min-h-0 flex-1 overflow-y-auto' : 'shrink-0'}`}>
+          <div className="hidden lg:block">
+            {summaryContent}
+            {paymentButtons}
+            {comandaWarning}
           </div>
 
-          <div className="pdv-order-payment-grid grid grid-cols-2 gap-2">
-            <Button onClick={() => onCharge('money')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Banknote className="mr-2 h-4 w-4" />}
-              Dinheiro
-            </Button>
+          <div className="lg:hidden">
+            {mobileStep === 'items' ? (
+              <div className="space-y-3">
+                <div className="rounded-3xl border border-border bg-background/80 p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                        Total do pedido
+                      </p>
+                      <p className="text-2xl font-black text-primary">{formatBRL(total)}</p>
+                    </div>
+                    <p className="rounded-2xl bg-primary/10 px-3 py-2 text-xs font-black text-primary">
+                      {items.reduce((sum, item) => sum + item.quantity, 0)} item{items.reduce((sum, item) => sum + item.quantity, 0) !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
 
-            <Button onClick={() => onCharge('pix')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-              Pix
-            </Button>
+                <Button
+                  onClick={() => setMobileStep('payment')}
+                  disabled={items.length === 0}
+                  className="h-[3.25rem] w-full rounded-2xl text-base font-black disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Ir para pagamento
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileStep('items')}
+                  className="w-full rounded-2xl border border-border bg-background px-3 py-2.5 text-sm font-black text-foreground shadow-sm transition-colors hover:bg-secondary"
+                >
+                  Voltar aos produtos do pedido
+                </button>
 
-            <Button onClick={() => onCharge('credit')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-              Crédito
-            </Button>
-
-            <Button onClick={() => onCharge('debit')} disabled={actionDisabled} className="pdv-order-payment-button h-12 rounded-2xl text-sm font-black bg-secondary text-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50">
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-              Débito
-            </Button>
+                {summaryContent}
+                {paymentButtons}
+                {comandaWarning}
+              </div>
+            )}
           </div>
-
-          {items.length > 0 && requireComanda && comandaNumber === null && !isLoading && (
-            <p className="mt-2 rounded-2xl bg-warning/10 px-3 py-2 text-center text-xs font-bold text-warning">
-              Informe o número da comanda para finalizar
-            </p>
-          )}
         </div>
       </div>
 

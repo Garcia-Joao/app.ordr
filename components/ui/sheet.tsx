@@ -5,9 +5,34 @@ import * as SheetPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { setMobileOverlayOpen } from '@/lib/mobile-overlay-state'
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+function Sheet({
+  onOpenChange,
+  open,
+  defaultOpen,
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Root>) {
+  const overlayId = React.useId()
+
+  React.useEffect(() => {
+    setMobileOverlayOpen(overlayId, Boolean(open ?? defaultOpen))
+
+    return () => setMobileOverlayOpen(overlayId, false)
+  }, [defaultOpen, open, overlayId])
+
+  return (
+    <SheetPrimitive.Root
+      data-slot="sheet"
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={(nextOpen) => {
+        setMobileOverlayOpen(overlayId, nextOpen)
+        onOpenChange?.(nextOpen)
+      }}
+      {...props}
+    />
+  )
 }
 
 function SheetTrigger({

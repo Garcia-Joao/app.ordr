@@ -4,12 +4,35 @@ import * as React from 'react'
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 
 import { cn } from '@/lib/utils'
+import { setMobileOverlayOpen } from '@/lib/mobile-overlay-state'
 import { buttonVariants } from '@/components/ui/button'
 
 function AlertDialog({
+  onOpenChange,
+  open,
+  defaultOpen,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+  const overlayId = React.useId()
+
+  React.useEffect(() => {
+    setMobileOverlayOpen(overlayId, Boolean(open ?? defaultOpen))
+
+    return () => setMobileOverlayOpen(overlayId, false)
+  }, [defaultOpen, open, overlayId])
+
+  return (
+    <AlertDialogPrimitive.Root
+      data-slot="alert-dialog"
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={(nextOpen) => {
+        setMobileOverlayOpen(overlayId, nextOpen)
+        onOpenChange?.(nextOpen)
+      }}
+      {...props}
+    />
+  )
 }
 
 function AlertDialogTrigger({

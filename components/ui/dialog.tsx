@@ -5,11 +5,34 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { setMobileOverlayOpen } from '@/lib/mobile-overlay-state'
 
 function Dialog({
+  onOpenChange,
+  open,
+  defaultOpen,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  const overlayId = React.useId()
+
+  React.useEffect(() => {
+    setMobileOverlayOpen(overlayId, Boolean(open ?? defaultOpen))
+
+    return () => setMobileOverlayOpen(overlayId, false)
+  }, [defaultOpen, open, overlayId])
+
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={(nextOpen) => {
+        setMobileOverlayOpen(overlayId, nextOpen)
+        onOpenChange?.(nextOpen)
+      }}
+      {...props}
+    />
+  )
 }
 
 function DialogTrigger({

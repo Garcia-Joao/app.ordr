@@ -340,6 +340,22 @@ html,
     padding-bottom: calc(var(--ordr-mobile-bottom-reserved) + 0.75rem) !important;
   }
 
+  html[data-ordr-mobile-overlay-open] {
+    --ordr-mobile-bottom-reserved: calc(env(safe-area-inset-bottom) + 0.35rem);
+  }
+
+  html[data-ordr-mobile-overlay-open] .mobile-bottom-nav-shell,
+  html[data-ordr-mobile-overlay-open] .mobile-more-panel {
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(calc(100% + 1rem));
+  }
+
+  .mobile-bottom-nav-shell,
+  .mobile-more-panel {
+    transition: opacity 180ms ease, transform 180ms ease;
+  }
+
   .mobile-bottom-nav-shell {
     min-height: var(--ordr-mobile-nav-height);
   }
