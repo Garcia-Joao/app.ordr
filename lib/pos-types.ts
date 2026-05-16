@@ -47,7 +47,7 @@ export interface OrderItem {
   notes?: string | null
 }
 
-export type PaymentMethod = 'money' | 'pix' | 'credit' | 'debit'
+export type PaymentMethod = 'money' | 'pix' | 'credit' | 'debit' | 'discount'
 
 export type InternalCustomer = {
   id: string

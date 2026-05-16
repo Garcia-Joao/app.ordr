@@ -90,7 +90,7 @@ export type CreateOrderResponse = {
   comandaName?: string | null
   total: number
   status: 'pending' | 'paid' | 'cancelled'
-  paymentMethod?: 'money' | 'pix' | 'credit' | 'debit' | null
+  paymentMethod?: 'money' | 'pix' | 'credit' | 'debit' | 'discount' | null
   taxApplied: boolean
   createdAt: string | Date
   paidAt?: string | Date | null

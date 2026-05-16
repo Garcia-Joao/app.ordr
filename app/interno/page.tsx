@@ -25,12 +25,14 @@ import {
   Bell,
   MapPinned,
   Info,
+  Percent,
 } from 'lucide-react'
 import { getCategories } from '@/lib/api/categories'
 import { getProducts } from '@/lib/api/products'
 import { getStockProducts } from '@/lib/api/stock'
 import { createOrder } from '@/lib/api/orders'
 import { listenStockUpdated } from '@/lib/events/stock-events'
+import { CategoryTabs } from '@/components/pos/category-tabs'
 import { ProductGrid } from '@/components/pos/product-grid'
 import type {
   CategoryConfig,
@@ -357,7 +359,7 @@ export default function InternoPage() {
         setProducts(productsData)
         setCategories(categoriesWithProducts)
         setSalesEnvironments(environmentsData)
-        setSelectedCategory(categoriesWithProducts[0]?.id ?? '')
+        setSelectedCategory('')
       } catch (error) {
         console.error('Erro ao carregar PDV interno:', error)
       } finally {
@@ -402,7 +404,7 @@ export default function InternoPage() {
             return current
           }
 
-          return categoriesWithProducts[0]?.id ?? ''
+          return ''
         })
 
         setCurrentItems((currentItems) =>
@@ -522,7 +524,7 @@ export default function InternoPage() {
 
     const exists = categories.some((category) => category.id === selectedCategory)
     if (!exists) {
-      setSelectedCategory(categories[0].id)
+      setSelectedCategory('')
     }
   }, [categories, selectedCategory])
 
@@ -1212,28 +1214,22 @@ export default function InternoPage() {
                 </div>
               </div>
 
-              <div className="border-b border-border bg-card/60 px-4 py-3 sm:px-6">
-                {categories.length > 0 && (
-                  <div className="flex overflow-x-auto gap-2">
-                    {categories.map((category) => (
-                      <button
-                        key={category.id}
-                        onClick={() => setSelectedCategory(category.id)}
-                        disabled={selectedCustomerIsDisabled}
-                        className={`px-3 py-2 rounded-lg text-sm whitespace-nowrap disabled:opacity-50 ${selectedCategory === category.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary text-foreground'
-                          }`}
-                      >
-                        {category.emoji ? `${category.emoji} ` : ''}
-                        {category.name}
-                      </button>
-                    ))}
+              <div className="border-b border-border bg-card/60">
+                {categories.length > 0 ? (
+                  <CategoryTabs
+                    categories={categories}
+                    selected={selectedCategory}
+                    onSelect={setSelectedCategory}
+                    disabled={selectedCustomerIsDisabled}
+                  />
+                ) : (
+                  <div className="px-5 py-4 text-sm text-muted-foreground">
+                    Nenhuma categoria cadastrada
                   </div>
                 )}
               </div>
 
-              <div className={`min-h-[420px] flex-1 overflow-visible lg:overflow-hidden ${selectedCustomerIsDisabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}>
+              <div className={`flex min-h-[420px] min-h-0 flex-1 flex-col overflow-hidden ${selectedCustomerIsDisabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}>
                 <ProductGrid
                   category={productSearch.trim() ? '' : selectedCategory}
                   products={filteredProducts}
@@ -1663,6 +1659,15 @@ export default function InternoPage() {
                       >
                         {isPaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                         Débito
+                      </button>
+
+                      <button
+                        onClick={() => handlePaySelected('discount')}
+                        disabled={isPaying || selectedOrderIds.length === 0}
+                        className="col-span-2 h-11 rounded-lg border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                      >
+                        {isPaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Percent className="h-4 w-4" />}
+                        Desconto na paga
                       </button>
                     </div>
                   </div>

@@ -1331,7 +1331,7 @@ export function ProductGrid({
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto px-3 py-4 sm:p-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 sm:p-5">
         {visibleProducts.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
             <p className="text-sm">

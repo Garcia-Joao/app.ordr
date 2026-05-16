@@ -462,7 +462,7 @@ export default function POSPage() {
           productsData
         )
         setCategories(categoriesWithProducts)
-        setSelectedCategory(categoriesWithProducts[0]?.id ?? '')
+        setSelectedCategory('')
 
         const normalizedOrders: Order[] = ordersData
           .map((order) => ({
@@ -522,7 +522,7 @@ export default function POSPage() {
             return current
           }
 
-          return categoriesWithProducts[0]?.id ?? ''
+          return ''
         })
 
         setCurrentOrderItems((currentItems) =>
@@ -551,7 +551,7 @@ export default function POSPage() {
     )
 
     if (!categoryStillExists) {
-      setSelectedCategory(categories[0].id)
+      setSelectedCategory('')
     }
   }, [categories, selectedCategory])
 
@@ -736,7 +736,7 @@ export default function POSPage() {
         selectedCategory &&
         !categoriesWithProducts.some((category) => category.id === selectedCategory)
       ) {
-        setSelectedCategory(categoriesWithProducts[0]?.id ?? '')
+        setSelectedCategory('')
       }
 
       const normalizedOrder: Order = {
@@ -908,7 +908,8 @@ export default function POSPage() {
                 <CategoryTabs
                   categories={categories}
                   selected={selectedCategory}
-                  onSelect={isSubmittingOrder ? () => { } : setSelectedCategory}
+                  onSelect={setSelectedCategory}
+                  disabled={isSubmittingOrder}
                 />
               ) : (
                 <div className="px-5 py-4 text-sm text-muted-foreground">

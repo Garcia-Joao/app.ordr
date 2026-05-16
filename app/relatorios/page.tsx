@@ -223,6 +223,7 @@ function getPaymentLabel(method?: string | null) {
     pix: 'Pix',
     credit: 'Crédito',
     debit: 'Débito',
+    discount: 'Desconto',
     unknown: 'Sem método',
   }
   return labels[method ?? 'unknown'] ?? method ?? 'Sem método'
@@ -672,6 +673,7 @@ function AdvancedFilters({
           <option value="pix">Pix</option>
           <option value="credit">Crédito</option>
           <option value="debit">Débito</option>
+          <option value="discount">Desconto</option>
           <option value="unknown">Sem método</option>
         </SelectFilter>
 

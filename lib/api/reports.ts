@@ -1,7 +1,7 @@
 import { apiFetch } from './client'
 
 export type ReportStatus = 'pending' | 'paid' | 'cancelled'
-export type PaymentMethod = 'money' | 'pix' | 'credit' | 'debit' | 'unknown'
+export type PaymentMethod = 'money' | 'pix' | 'credit' | 'debit' | 'discount' | 'unknown'
 
 export type ReportFilters = {
   fromDate?: string

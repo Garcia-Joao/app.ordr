@@ -6,25 +6,52 @@ interface CategoryTabsProps {
   categories: CategoryConfig[]
   selected: string
   onSelect: (categoryId: string) => void
+  disabled?: boolean
 }
 
-export function CategoryTabs({ categories, selected, onSelect }: CategoryTabsProps) {
+export function CategoryTabs({
+  categories,
+  selected,
+  onSelect,
+  disabled = false,
+}: CategoryTabsProps) {
+  const baseButtonClass =
+    'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 sm:px-4'
+
   return (
-    <div className="flex gap-2 px-4 py-3 overflow-x-auto">
-      {categories.map((category) => (
+    <div className="max-h-32 overflow-y-auto px-3 py-3 sm:max-h-40 sm:px-4">
+      <div className="flex flex-wrap gap-2">
         <button
-          key={category.id}
-          onClick={() => onSelect(category.id)}
-          className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-            selected === category.id
-              ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+          type="button"
+          onClick={() => onSelect('')}
+          disabled={disabled}
+          className={`${baseButtonClass} ${
+            selected === ''
+              ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
           }`}
         >
-          <span className="text-lg">{category.emoji}</span>
-          <span>{category.name}</span>
+          <span className="text-base">✨</span>
+          <span>Todos</span>
         </button>
-      ))}
+
+        {categories.map((category) => (
+          <button
+            key={category.id}
+            type="button"
+            onClick={() => onSelect(category.id)}
+            disabled={disabled}
+            className={`${baseButtonClass} ${
+              selected === category.id
+                ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            <span className="text-base">{category.emoji}</span>
+            <span>{category.name}</span>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
