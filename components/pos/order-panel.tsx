@@ -200,8 +200,8 @@ export function OrderPanel({
 
   return (
     <>
-      <div className="flex h-full w-full flex-col overflow-hidden bg-card lg:w-[400px] lg:border-l lg:border-border">
-        <div className="shrink-0 border-b border-border bg-gradient-to-br from-primary/12 via-card to-card px-4 py-3 sm:px-5 sm:py-4">
+      <div className="flex h-full w-full flex-col overflow-hidden bg-card lg:w-[460px] xl:w-[500px] lg:border-l lg:border-border">
+        <div className="pdv-order-panel-header shrink-0 border-b border-border bg-gradient-to-br from-primary/12 via-card to-card px-4 py-3 sm:px-5 sm:py-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -348,7 +348,7 @@ export function OrderPanel({
           </div>
         </div>
 
-        <div className={`min-h-0 flex-1 overflow-y-auto bg-background/35 p-3 sm:p-4 ${mobileStep === 'payment' ? 'hidden lg:block' : ''}`}>
+        <div className={`pdv-order-items-scroll min-h-0 flex-1 overflow-y-auto bg-background/35 p-3 sm:p-4 ${mobileStep === 'payment' ? 'hidden lg:block' : ''}`}>
           {items.length === 0 ? (
             <div className="flex h-full min-h-[220px] flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card/70 px-6 py-10 text-center text-muted-foreground">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
@@ -360,7 +360,7 @@ export function OrderPanel({
               </p>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="pdv-order-items-list space-y-2.5">
               {items.map((item) => {
                 const itemKey = getItemKey(item)
                 const itemPrice = getItemPrice(item)
@@ -371,11 +371,11 @@ export function OrderPanel({
                 return (
                   <div
                     key={itemKey}
-                    className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm transition-shadow hover:shadow-md"
+                    className="pdv-order-item-card overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm transition-shadow hover:shadow-md"
                   >
-                    <div className="p-3 sm:p-3.5">
+                    <div className="pdv-order-item-body p-3 sm:p-3.5">
                       <div className="flex gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-2xl ring-1 ring-border/70">
+                        <div className="pdv-order-item-emoji flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-2xl ring-1 ring-border/70">
                           {item.product.emoji}
                         </div>
 
@@ -412,7 +412,7 @@ export function OrderPanel({
                             </p>
                           </div>
 
-                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                          <div className="pdv-order-item-controls mt-3 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center rounded-2xl border border-border bg-background p-1 shadow-sm">
                               <button
                                 type="button"
@@ -468,7 +468,7 @@ export function OrderPanel({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 border-t border-border/70 bg-secondary/45 px-3 py-2">
+                    <div className="pdv-order-item-print-row flex items-center justify-between gap-2 border-t border-border/70 bg-secondary/45 px-3 py-2">
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">
                         Impressão
                       </span>

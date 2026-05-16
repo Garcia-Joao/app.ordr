@@ -664,3 +664,153 @@ html,
     padding-bottom: 0.75rem;
   }
 }
+
+/* PDV current order panel: give the item list more usable space. */
+@media (min-width: 1024px) {
+  .pdv-order-items-scroll {
+    padding: 1rem !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .pdv-mobile-order-backdrop {
+    align-items: stretch !important;
+    padding-top: calc(env(safe-area-inset-top) + 0.35rem) !important;
+    padding-bottom: calc(var(--ordr-mobile-bottom-reserved) + 0.35rem) !important;
+  }
+
+  .pdv-mobile-order-sheet {
+    height: calc(100svh - var(--ordr-mobile-bottom-reserved) - env(safe-area-inset-top) - 0.7rem) !important;
+    max-height: calc(100svh - var(--ordr-mobile-bottom-reserved) - env(safe-area-inset-top) - 0.7rem) !important;
+    border-radius: 1.5rem !important;
+  }
+
+  .pdv-mobile-order-sheet > .mx-auto {
+    margin-top: 0.45rem !important;
+    height: 0.28rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header {
+    padding: 0.65rem 0.75rem 0.55rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header > .mb-3 {
+    margin-bottom: 0.55rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header .h-10.w-10 {
+    height: 2.2rem !important;
+    width: 2.2rem !important;
+    border-radius: 0.9rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header input {
+    height: 2.65rem !important;
+    min-height: 2.65rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header label {
+    margin-bottom: 0.25rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header .mt-3 {
+    margin-top: 0.55rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header .mt-3.grid {
+    padding: 0.2rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-header .mt-3.grid button {
+    min-height: 2rem !important;
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-items-scroll {
+    padding: 0.65rem 0.65rem 0.5rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-items-list {
+    display: grid;
+    gap: 0.55rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-card {
+    border-radius: 1.15rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-body {
+    padding: 0.65rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-emoji {
+    height: 2.25rem !important;
+    width: 2.25rem !important;
+    border-radius: 0.95rem !important;
+    font-size: 1.25rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-controls {
+    margin-top: 0.5rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-controls button,
+  .pdv-mobile-order-sheet .pdv-order-item-controls span {
+    min-height: 2rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-controls .h-9.w-9 {
+    height: 2rem !important;
+    width: 2rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-controls .min-w-9 {
+    min-width: 2rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-controls .h-10 {
+    height: 2.15rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-controls .w-10 {
+    width: 2.15rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-print-row {
+    padding: 0.45rem 0.65rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-item-print-row button {
+    min-height: 1.75rem !important;
+    padding: 0.3rem 0.55rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-actions {
+    padding: 0.6rem 0.65rem !important;
+    padding-bottom: calc(0.6rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-actions .rounded-3xl {
+    border-radius: 1.1rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-actions .space-y-3 {
+    display: grid;
+    gap: 0.55rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-actions .p-3 {
+    padding: 0.65rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-actions .text-2xl {
+    font-size: 1.25rem !important;
+    line-height: 1.55rem !important;
+  }
+
+  .pdv-mobile-order-sheet .pdv-order-panel-actions .h-\[3\.25rem\] {
+    height: 2.75rem !important;
+  }
+}
