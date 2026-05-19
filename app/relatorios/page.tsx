@@ -85,6 +85,8 @@ const MODULE_ACCENTS: Record<DashboardModule, { icon: string; active: string; ho
 const defaultFilters: ReportFilters = {
   fromDate: toDateInputValue(new Date()),
   toDate: toDateInputValue(new Date()),
+  fromTime: '00:00',
+  toTime: '23:59',
   status: 'all',
   paymentMethod: 'all',
   eventDateId: 'all',
@@ -103,49 +105,49 @@ const modules: Array<{
   description: string
   icon: React.ReactNode
 }> = [
-  {
-    id: 'overview',
-    title: 'Visão geral',
-    description: 'Saúde financeira e indicadores principais.',
-    icon: <BarChart3 className="h-4 w-4" />,
-  },
-  {
-    id: 'sales',
-    title: 'Vendas',
-    description: 'Receita por dia, hora, status e pagamento.',
-    icon: <Wallet className="h-4 w-4" />,
-  },
-  {
-    id: 'products',
-    title: 'Produtos',
-    description: 'Ranking de receita, custo, lucro e margem.',
-    icon: <Package className="h-4 w-4" />,
-  },
-  {
-    id: 'costHistory',
-    title: 'Histórico de custos',
-    description: 'Evolução de custo por produto e categoria.',
-    icon: <History className="h-4 w-4" />,
-  },
-  {
-    id: 'events',
-    title: 'Eventos',
-    description: 'Resultado por evento com custos detalhados.',
-    icon: <Target className="h-4 w-4" />,
-  },
-  {
-    id: 'customers',
-    title: 'Clientes',
-    description: 'Comandas, clientes e consumo interno.',
-    icon: <Users className="h-4 w-4" />,
-  },
-  {
-    id: 'orders',
-    title: 'Pedidos',
-    description: 'Auditoria detalhada dos pedidos filtrados.',
-    icon: <ReceiptText className="h-4 w-4" />,
-  },
-]
+    {
+      id: 'overview',
+      title: 'Visão geral',
+      description: 'Saúde financeira e indicadores principais.',
+      icon: <BarChart3 className="h-4 w-4" />,
+    },
+    {
+      id: 'sales',
+      title: 'Vendas',
+      description: 'Receita por dia, hora, status e pagamento.',
+      icon: <Wallet className="h-4 w-4" />,
+    },
+    {
+      id: 'products',
+      title: 'Produtos',
+      description: 'Ranking de receita, custo, lucro e margem.',
+      icon: <Package className="h-4 w-4" />,
+    },
+    {
+      id: 'costHistory',
+      title: 'Histórico de custos',
+      description: 'Evolução de custo por produto e categoria.',
+      icon: <History className="h-4 w-4" />,
+    },
+    {
+      id: 'events',
+      title: 'Eventos',
+      description: 'Resultado por evento com custos detalhados.',
+      icon: <Target className="h-4 w-4" />,
+    },
+    {
+      id: 'customers',
+      title: 'Clientes',
+      description: 'Comandas, clientes e consumo interno.',
+      icon: <Users className="h-4 w-4" />,
+    },
+    {
+      id: 'orders',
+      title: 'Pedidos',
+      description: 'Auditoria detalhada dos pedidos filtrados.',
+      icon: <ReceiptText className="h-4 w-4" />,
+    },
+  ]
 
 function formatBRL(value: number | string | null | undefined) {
   return Number(value ?? 0).toLocaleString('pt-BR', {
@@ -181,31 +183,82 @@ function monthStart(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), 1)
 }
 
+const BRAZIL_TIME_ZONE = 'America/Sao_Paulo'
+
+function parseDateOnly(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
+}
+
 function formatDate(value?: string | Date | null) {
   if (!value) return '-'
-  return new Date(value).toLocaleDateString('pt-BR', {
+  const date = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? parseDateOnly(value)
+    : new Date(value)
+  if (!date || Number.isNaN(date.getTime())) return '-'
+
+  return date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
+    year: '2-digit',
+    timeZone: typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? undefined : BRAZIL_TIME_ZONE,
   })
 }
 
 function formatDateTime(value?: string | Date | null) {
   if (!value) return '-'
-  return new Date(value).toLocaleString('pt-BR', {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+
+  return date.toLocaleString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
+    year: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
+    timeZone: BRAZIL_TIME_ZONE,
   })
+}
+
+function formatTime(value?: string | Date | null) {
+  if (!value) return '-'
+  if (typeof value === 'string' && /^\d{2}:\d{2}$/.test(value)) return value
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+
+  return date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: BRAZIL_TIME_ZONE,
+  })
+}
+
+function formatPeriodRange(row: { startAt?: string; endAt?: string; startTime?: string; endTime?: string }) {
+  const sameDay = row.startAt && row.endAt && getDateKey(row.startAt) === getDateKey(row.endAt)
+  if (sameDay) return `${formatDate(row.startAt)} • ${formatTime(row.startAt)} até ${formatTime(row.endAt)}`
+  return `${formatDateTime(row.startAt)} até ${formatDateTime(row.endAt)}`
 }
 
 function getDateKey(value?: string | Date | null) {
   if (!value) return ''
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toISOString().slice(0, 10)
+
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BRAZIL_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
 }
 
 function getStatusLabel(status?: string | null) {
@@ -342,26 +395,36 @@ export default function RelatoriosPage() {
     if (range === 'today') {
       next.fromDate = toDateInputValue(today)
       next.toDate = toDateInputValue(today)
+      next.fromTime = '00:00'
+      next.toTime = '23:59'
     }
 
     if (range === '7d') {
       next.fromDate = toDateInputValue(addDays(today, -6))
       next.toDate = toDateInputValue(today)
+      next.fromTime = '00:00'
+      next.toTime = '23:59'
     }
 
     if (range === '30d') {
       next.fromDate = toDateInputValue(addDays(today, -29))
       next.toDate = toDateInputValue(today)
+      next.fromTime = '00:00'
+      next.toTime = '23:59'
     }
 
     if (range === 'month') {
       next.fromDate = toDateInputValue(monthStart(today))
       next.toDate = toDateInputValue(today)
+      next.fromTime = '00:00'
+      next.toTime = '23:59'
     }
 
     if (range === 'all') {
       next.fromDate = ''
       next.toDate = ''
+      next.fromTime = '00:00'
+      next.toTime = '23:59'
     }
 
     setFilters(next)
@@ -507,9 +570,11 @@ export default function RelatoriosPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[150px_150px_1fr_160px_auto_auto]">
-          <DateFilter label="De" value={filters.fromDate ?? ''} onChange={(value) => updateFilter('fromDate', value)} />
-          <DateFilter label="Até" value={filters.toDate ?? ''} onChange={(value) => updateFilter('toDate', value)} />
+        <div className="mt-4 grid gap-3 lg:grid-cols-[145px_115px_145px_115px_1fr_160px_auto_auto]">
+          <DateFilter label="Data inicial" value={filters.fromDate ?? ''} onChange={(value) => updateFilter('fromDate', value)} />
+          <TimeFilter label="Hora inicial" value={filters.fromTime ?? '00:00'} onChange={(value) => updateFilter('fromTime', value)} />
+          <DateFilter label="Data final" value={filters.toDate ?? ''} onChange={(value) => updateFilter('toDate', value)} />
+          <TimeFilter label="Hora final" value={filters.toTime ?? '23:59'} onChange={(value) => updateFilter('toTime', value)} />
 
           <div className="relative">
             <span className="mb-1 block text-xs font-medium text-muted-foreground">Busca</span>
@@ -531,11 +596,10 @@ export default function RelatoriosPage() {
 
           <button
             onClick={() => setShowAdvancedFilters((current) => !current)}
-            className={`mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
-              showAdvancedFilters
+            className={`mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${showAdvancedFilters
                 ? 'border-primary/40 bg-primary/10 text-primary'
                 : 'border-border bg-background hover:bg-secondary'
-            }`}
+              }`}
           >
             <Filter className="h-4 w-4" />
             Filtros
@@ -566,7 +630,7 @@ export default function RelatoriosPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Período</p>
             <p className="mt-1 text-sm font-medium text-foreground">
               {(filters.fromDate || filters.toDate)
-                ? `${filters.fromDate ? formatDate(filters.fromDate) : 'Início'} → ${filters.toDate ? formatDate(filters.toDate) : 'Hoje'}`
+                ? `${filters.fromDate ? `${formatDate(filters.fromDate)} ${filters.fromTime ?? '00:00'}` : 'Início'} → ${filters.toDate ? `${formatDate(filters.toDate)} ${filters.toTime ?? '23:59'}` : 'Hoje'}`
                 : 'Todos os dados'}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -867,6 +931,22 @@ function SalesModule({ dashboard }: { dashboard: ReportsDashboard }) {
         <SalesByHourChart dashboard={dashboard} />
         <StatusChart dashboard={dashboard} />
       </section>
+
+      <SectionCard title="Períodos de operação" description="Se houver mais de 6 horas sem pedidos, o relatório separa automaticamente em outro período.">
+        <InsightTable
+          rows={dashboard.analytics.periods}
+          empty="Sem períodos no filtro atual."
+          columns={[
+            { key: 'label', label: 'Período' },
+            { key: 'range', label: 'Intervalo', render: (row) => formatPeriodRange(row) },
+            { key: 'paidOrders', label: 'Pagos' },
+            { key: 'orders', label: 'Total pedidos' },
+            { key: 'revenue', label: 'Receita', render: (row) => formatBRL(row.revenue) },
+            { key: 'profit', label: 'Lucro', render: (row) => <span className={getProfitTone(row.profit)}>{formatBRL(row.profit)}</span> },
+            { key: 'averageTicket', label: 'Ticket', render: (row) => formatBRL(row.averageTicket) },
+          ]}
+        />
+      </SectionCard>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <InsightMetricCard
@@ -1380,8 +1460,7 @@ function CostHistoryRowsTable({ rows, compact = false }: { rows: ProductCostHist
               <MiniMetric label="Anterior" value={row.oldEffectiveCost == null ? '-' : formatCostPerUnit(row.oldEffectiveCost, row.effectiveUnit)} />
               <MiniMetric label="Novo" value={formatCostPerUnit(row.effectiveCost, row.effectiveUnit)} />
               {!compact && <MiniMetric label="Categoria" value={row.categoryName ?? 'Sem categoria'} />}
-              <MiniMetric label="Configuração" value={row.referenceCost && row.referenceQuantity ? `Ref. ${formatBRL(row.referenceCost)}` : row.simpleCost ? `Simples ${formatBRL(row.simpleCost)}` : row.costMode} />
-            </div>
+              <MiniMetric label="Configuração" value={row.referenceCost && row.referenceQuantity ? `Ref. ${formatBRL(row.referenceCost)}` : row.simpleCost ? `Simples ${formatBRL(row.simpleCost)}` : row.costMode ?? '-'} />            </div>
           </div>
         ))}
       </div>
@@ -1390,7 +1469,7 @@ function CostHistoryRowsTable({ rows, compact = false }: { rows: ProductCostHist
 }
 
 function buildCostHistoryPrintHtml(title: string, rows: ProductCostHistoryRow[], fromDate?: string, toDate?: string) {
-  const generatedAt = new Date().toLocaleString('pt-BR')
+  const generatedAt = new Date().toLocaleString('pt-BR', { timeZone: BRAZIL_TIME_ZONE, hour12: false })
   const period = (fromDate || toDate) ? `${fromDate ? formatDate(fromDate) : 'Início'} → ${toDate ? formatDate(toDate) : 'Hoje'}` : 'Todos os dados'
   const maxValue = Math.max(1, ...rows.map((row) => Math.max(0, row.effectiveCost)))
   const chartBars = rows.slice(-28).map((row, index) => {
@@ -1680,11 +1759,10 @@ function ModuleButton({
   return (
     <button
       onClick={onClick}
-      className={`w-[220px] shrink-0 rounded-2xl border p-3 text-left transition xl:w-full xl:p-4 ${
-        active
+      className={`w-[220px] shrink-0 rounded-2xl border p-3 text-left transition xl:w-full xl:p-4 ${active
           ? 'border-primary/40 bg-primary/10 shadow-sm'
           : 'border-border bg-background hover:border-primary/30 hover:bg-secondary/40'
-      }`}
+        }`}
     >
       <div className="flex items-start gap-3">
         <div className={`rounded-xl border p-2 ${active ? 'border-primary/30 bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground'}`}>
@@ -1838,6 +1916,21 @@ function DateFilter({ label, value, onChange }: { label: string; value: string; 
           className="h-10 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
+    </label>
+  )
+}
+
+
+function TimeFilter({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
+      <input
+        type="time"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+      />
     </label>
   )
 }
@@ -2446,9 +2539,8 @@ function ExportPdfModal({
                   key={module.id}
                   type="button"
                   onClick={() => onToggle(module.id)}
-                  className={`rounded-2xl border p-4 text-left transition ${
-                    checked ? `${accent.active} ring-1 ring-white/10` : 'border-border bg-background hover:bg-secondary/40'
-                  }`}
+                  className={`rounded-2xl border p-4 text-left transition ${checked ? `${accent.active} ring-1 ring-white/10` : 'border-border bg-background hover:bg-secondary/40'
+                    }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
@@ -2487,9 +2579,9 @@ function ExportPdfModal({
 
 function buildReportPdfHtml(dashboard: ReportsDashboard, filters: ReportFilters, selectedModules: DashboardModule[]) {
   const selected = new Set(selectedModules)
-  const generatedAt = new Date().toLocaleString('pt-BR')
+  const generatedAt = new Date().toLocaleString('pt-BR', { timeZone: BRAZIL_TIME_ZONE, hour12: false })
   const period = (filters.fromDate || filters.toDate)
-    ? `${filters.fromDate ? formatDate(filters.fromDate) : 'Início'} → ${filters.toDate ? formatDate(filters.toDate) : 'Hoje'}`
+    ? `${filters.fromDate ? `${formatDate(filters.fromDate)} ${filters.fromTime ?? '00:00'}` : 'Início'} → ${filters.toDate ? `${formatDate(filters.toDate)} ${filters.toTime ?? '23:59'}` : 'Hoje'}`
     : 'Todos os dados'
   const summary = dashboard.summary
   const moduleTitle = (id: DashboardModule) => modules.find((module) => module.id === id)?.title ?? id
@@ -2575,6 +2667,9 @@ function buildReportPdfHtml(dashboard: ReportsDashboard, filters: ReportFilters,
     ${pdfDonut(dashboard.charts.paymentMethods.map((row) => ({ label: getPaymentLabel(row.paymentMethod), value: row.revenue })), 'Mix de pagamentos', formatBRL)}
     ${pdfHorizontalBars((dashboard.analytics?.weekdayPerformance ?? []).slice(0, 7).map((row) => ({ label: row.weekday ?? '-', value: row.revenue, detail: `${formatNumber(row.paidOrders)} pedidos pagos • ticket ${formatBRL(row.averageTicket)}` })), 'Receita por dia da semana', formatBRL)}
     ${pdfHorizontalBars((dashboard.analytics?.monthPeriodPerformance ?? []).map((row) => ({ label: row.period ?? '-', value: row.revenue, detail: `${formatNumber(row.paidOrders)} pedidos pagos • lucro ${formatBRL(row.profit)}` })), 'Melhor período do mês', formatBRL)}
+    <h3>Períodos de operação</h3><p class="muted">Separação automática quando existe intervalo maior que 6 horas sem pedidos.</p><table><thead><tr><th>Período</th><th>Intervalo</th><th>Pedidos pagos</th><th>Total pedidos</th><th>Receita</th><th>Lucro</th><th>Ticket</th></tr></thead><tbody>
+      ${tableRows((dashboard.analytics?.periods ?? []).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(formatPeriodRange(row))}</td><td>${row.paidOrders}</td><td>${row.orders}</td><td>${formatBRL(row.revenue)}</td><td>${formatBRL(row.profit)}</td><td>${formatBRL(row.averageTicket)}</td></tr>`).join(''), 7)}
+    </tbody></table>
     <h3>Melhor horário por dia</h3><table><thead><tr><th>Dia</th><th>Melhor horário</th><th>Pedidos pagos</th><th>Receita</th><th>Ticket médio</th></tr></thead><tbody>
       ${tableRows((dashboard.analytics?.bestHourByDay ?? []).slice(-18).map((row) => `<tr><td>${formatDate(row.date)}</td><td>${escapeHtml(row.hour ?? '-')}</td><td>${row.paidOrders}</td><td>${formatBRL(row.revenue)}</td><td>${formatBRL(row.averageTicket)}</td></tr>`).join(''), 5)}
     </tbody></table>

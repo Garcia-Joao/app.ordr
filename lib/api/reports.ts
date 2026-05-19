@@ -6,6 +6,8 @@ export type PaymentMethod = 'money' | 'pix' | 'credit' | 'debit' | 'discount' | 
 export type ReportFilters = {
   fromDate?: string
   toDate?: string
+  fromTime?: string
+  toTime?: string
   status?: ReportStatus | 'all'
   paymentMethod?: PaymentMethod | 'all'
   eventDateId?: string
@@ -46,6 +48,29 @@ export type TimeInsightRow = {
   cost: number
   profit: number
   averageTicket: number
+}
+
+
+export type ReportPeriodRow = {
+  id: string
+  label: string
+  startAt: string
+  endAt: string
+  startDate: string
+  endDate: string
+  startTime: string
+  endTime: string
+  orders: number
+  paidOrders: number
+  pendingOrders: number
+  cancelledOrders: number
+  revenue: number
+  cost: number
+  profit: number
+  averageTicket: number
+  itemsSold: number
+  paymentMethods: Array<{ paymentMethod: PaymentMethod; label: string; orders: number; revenue: number }>
+  topProducts: Array<{ productId: string; name: string; quantity: number; revenue: number }>
 }
 
 export type EventTicketInsightRow = EventReportRow & {
@@ -111,6 +136,7 @@ export type ReportsDashboard = {
     monthPeriodPerformance: TimeInsightRow[]
     weekdayPerformance: TimeInsightRow[]
     ticketByEvent: EventTicketInsightRow[]
+    periods: ReportPeriodRow[]
   }
   charts: {
     salesByDay: Array<{ date: string; orders: number; paidOrders: number; revenue: number; cost: number; profit: number }>
@@ -130,6 +156,7 @@ export type ReportsDashboard = {
     monthPeriodPerformance: TimeInsightRow[]
     weekdayPerformance: TimeInsightRow[]
     customers: CustomerReportRow[]
+    periods: ReportPeriodRow[]
   }
   tables: {
     products: ProductReportRow[]
@@ -143,6 +170,7 @@ export type ReportsDashboard = {
     weekdayPerformance: TimeInsightRow[]
     environments: EnvironmentReportRow[]
     customers: CustomerReportRow[]
+    periods: ReportPeriodRow[]
     recentOrders: RecentOrderReportRow[]
   }
 }
