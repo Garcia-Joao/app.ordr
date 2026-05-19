@@ -191,7 +191,6 @@ function monthStart(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), 1)
 }
 
-
 function parseDateOnly(value: string) {
   const [year, month, day] = value.split('-').map(Number)
   if (!year || !month || !day) return null
@@ -200,16 +199,19 @@ function parseDateOnly(value: string) {
 
 function formatDate(value?: string | Date | null) {
   if (!value) return '-'
-  const date = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? parseDateOnly(value)
+
+  const dateOnlyMatch = typeof value === 'string' ? value.match(/^(\d{4}-\d{2}-\d{2})(?:T00:00:00(?:\.000)?Z)?$/) : null
+  const date = dateOnlyMatch
+    ? parseDateOnly(dateOnlyMatch[1])
     : new Date(value)
+
   if (!date || Number.isNaN(date.getTime())) return '-'
 
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
-    timeZone: typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? undefined : BRAZIL_TIME_ZONE,
+    timeZone: dateOnlyMatch ? undefined : BRAZIL_TIME_ZONE,
   })
 }
 
