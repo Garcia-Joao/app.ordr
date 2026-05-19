@@ -920,6 +920,8 @@ function OverviewModule({ dashboard, onDayClick }: { dashboard: ReportsDashboard
 }
 
 function SalesModule({ dashboard }: { dashboard: ReportsDashboard }) {
+  const operationPeriods = dashboard.analytics?.periods ?? dashboard.charts?.periods ?? dashboard.tables?.periods ?? []
+
   return (
     <div className="space-y-6">
       <ModuleHeader
@@ -947,7 +949,7 @@ function SalesModule({ dashboard }: { dashboard: ReportsDashboard }) {
 
       <SectionCard title="Períodos de operação" description="Se houver mais de 6 horas sem pedidos, o relatório separa automaticamente em outro período.">
         <InsightTable
-          rows={dashboard.analytics.periods}
+          rows={operationPeriods}
           empty="Sem períodos no filtro atual."
           columns={[
             { key: 'label', label: 'Período' },
