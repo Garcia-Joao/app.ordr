@@ -82,6 +82,8 @@ const MODULE_ACCENTS: Record<DashboardModule, { icon: string; active: string; ho
   orders: { icon: 'border-slate-400/30 bg-slate-500/15 text-slate-700 dark:text-slate-200', active: 'border-slate-400/50 bg-slate-500/10 shadow-slate-500/10', hover: 'hover:border-slate-400/40 hover:bg-slate-500/5', badge: 'bg-slate-500' },
 }
 
+const BRAZIL_TIME_ZONE = 'America/Sao_Paulo'
+
 const defaultFilters: ReportFilters = {
   fromDate: toDateInputValue(new Date()),
   toDate: toDateInputValue(new Date()),
@@ -189,7 +191,6 @@ function monthStart(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), 1)
 }
 
-const BRAZIL_TIME_ZONE = 'America/Sao_Paulo'
 
 function parseDateOnly(value: string) {
   const [year, month, day] = value.split('-').map(Number)
