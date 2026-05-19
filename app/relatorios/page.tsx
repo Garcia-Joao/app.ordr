@@ -105,49 +105,49 @@ const modules: Array<{
   description: string
   icon: React.ReactNode
 }> = [
-    {
-      id: 'overview',
-      title: 'Visão geral',
-      description: 'Saúde financeira e indicadores principais.',
-      icon: <BarChart3 className="h-4 w-4" />,
-    },
-    {
-      id: 'sales',
-      title: 'Vendas',
-      description: 'Receita por dia, hora, status e pagamento.',
-      icon: <Wallet className="h-4 w-4" />,
-    },
-    {
-      id: 'products',
-      title: 'Produtos',
-      description: 'Ranking de receita, custo, lucro e margem.',
-      icon: <Package className="h-4 w-4" />,
-    },
-    {
-      id: 'costHistory',
-      title: 'Histórico de custos',
-      description: 'Evolução de custo por produto e categoria.',
-      icon: <History className="h-4 w-4" />,
-    },
-    {
-      id: 'events',
-      title: 'Eventos',
-      description: 'Resultado por evento com custos detalhados.',
-      icon: <Target className="h-4 w-4" />,
-    },
-    {
-      id: 'customers',
-      title: 'Clientes',
-      description: 'Comandas, clientes e consumo interno.',
-      icon: <Users className="h-4 w-4" />,
-    },
-    {
-      id: 'orders',
-      title: 'Pedidos',
-      description: 'Auditoria detalhada dos pedidos filtrados.',
-      icon: <ReceiptText className="h-4 w-4" />,
-    },
-  ]
+  {
+    id: 'overview',
+    title: 'Visão geral',
+    description: 'Saúde financeira e indicadores principais.',
+    icon: <BarChart3 className="h-4 w-4" />,
+  },
+  {
+    id: 'sales',
+    title: 'Vendas',
+    description: 'Receita por dia, hora, status e pagamento.',
+    icon: <Wallet className="h-4 w-4" />,
+  },
+  {
+    id: 'products',
+    title: 'Produtos',
+    description: 'Ranking de receita, custo, lucro e margem.',
+    icon: <Package className="h-4 w-4" />,
+  },
+  {
+    id: 'costHistory',
+    title: 'Histórico de custos',
+    description: 'Evolução de custo por produto e categoria.',
+    icon: <History className="h-4 w-4" />,
+  },
+  {
+    id: 'events',
+    title: 'Eventos',
+    description: 'Resultado por evento com custos detalhados.',
+    icon: <Target className="h-4 w-4" />,
+  },
+  {
+    id: 'customers',
+    title: 'Clientes',
+    description: 'Comandas, clientes e consumo interno.',
+    icon: <Users className="h-4 w-4" />,
+  },
+  {
+    id: 'orders',
+    title: 'Pedidos',
+    description: 'Auditoria detalhada dos pedidos filtrados.',
+    icon: <ReceiptText className="h-4 w-4" />,
+  },
+]
 
 function formatBRL(value: number | string | null | undefined) {
   return Number(value ?? 0).toLocaleString('pt-BR', {
@@ -168,9 +168,15 @@ function formatPercent(value: number | string | null | undefined) {
 }
 
 function toDateInputValue(date: Date) {
-  const offset = date.getTimezoneOffset()
-  const local = new Date(date.getTime() - offset * 60_000)
-  return local.toISOString().slice(0, 10)
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BRAZIL_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
 }
 
 function addDays(date: Date, amount: number) {
@@ -241,6 +247,12 @@ function formatPeriodRange(row: { startAt?: string; endAt?: string; startTime?: 
   const sameDay = row.startAt && row.endAt && getDateKey(row.startAt) === getDateKey(row.endAt)
   if (sameDay) return `${formatDate(row.startAt)} • ${formatTime(row.startAt)} até ${formatTime(row.endAt)}`
   return `${formatDateTime(row.startAt)} até ${formatDateTime(row.endAt)}`
+}
+
+function formatPeriodEvent(row: { eventTitle?: string | null; events?: Array<{ title: string }> }) {
+  if (row.eventTitle) return row.eventTitle
+  if (row.events?.length) return row.events.map((event) => event.title).join(' + ')
+  return 'Sem evento vinculado'
 }
 
 function getDateKey(value?: string | Date | null) {
@@ -596,10 +608,11 @@ export default function RelatoriosPage() {
 
           <button
             onClick={() => setShowAdvancedFilters((current) => !current)}
-            className={`mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${showAdvancedFilters
+            className={`mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
+              showAdvancedFilters
                 ? 'border-primary/40 bg-primary/10 text-primary'
                 : 'border-border bg-background hover:bg-secondary'
-              }`}
+            }`}
           >
             <Filter className="h-4 w-4" />
             Filtros
@@ -939,6 +952,9 @@ function SalesModule({ dashboard }: { dashboard: ReportsDashboard }) {
           columns={[
             { key: 'label', label: 'Período' },
             { key: 'range', label: 'Intervalo', render: (row) => formatPeriodRange(row) },
+            { key: 'event', label: 'Evento', render: (row) => (
+              <span className={row.eventTitle ? 'font-medium text-foreground' : 'text-muted-foreground'}>{formatPeriodEvent(row)}</span>
+            ) },
             { key: 'paidOrders', label: 'Pagos' },
             { key: 'orders', label: 'Total pedidos' },
             { key: 'revenue', label: 'Receita', render: (row) => formatBRL(row.revenue) },
@@ -1437,7 +1453,7 @@ function CostHistoryRowsTable({ rows, compact = false }: { rows: ProductCostHist
               <td className="px-3 py-3 text-right font-semibold text-foreground">{formatCostPerUnit(row.effectiveCost, row.effectiveUnit)}</td>
               <td className={`px-3 py-3 text-right font-semibold ${getCostDeltaClass(row.deltaCost)}`}>{getCostDeltaLabel(row.deltaCost)}</td>
               <td className="px-3 py-3 text-xs text-muted-foreground">
-                {row.referenceCost && row.referenceQuantity ? `Referência: ${formatBRL(row.referenceCost)} / ${formatNumber(row.referenceQuantity, 3)} ${row.stockUnit ?? row.effectiveUnit}` : row.simpleCost ? `Simples: ${formatBRL(row.simpleCost)}` : row.costMode}
+                {row.referenceCost && row.referenceQuantity ? `Referência: ${formatBRL(row.referenceCost)} / ${formatNumber(row.referenceQuantity, 3)} ${row.stockUnit ?? row.effectiveUnit}` : row.simpleCost ? `Simples: ${formatBRL(row.simpleCost)}` : row.costMode ?? '-'}
               </td>
             </tr>
           ))}
@@ -1460,7 +1476,8 @@ function CostHistoryRowsTable({ rows, compact = false }: { rows: ProductCostHist
               <MiniMetric label="Anterior" value={row.oldEffectiveCost == null ? '-' : formatCostPerUnit(row.oldEffectiveCost, row.effectiveUnit)} />
               <MiniMetric label="Novo" value={formatCostPerUnit(row.effectiveCost, row.effectiveUnit)} />
               {!compact && <MiniMetric label="Categoria" value={row.categoryName ?? 'Sem categoria'} />}
-              <MiniMetric label="Configuração" value={row.referenceCost && row.referenceQuantity ? `Ref. ${formatBRL(row.referenceCost)}` : row.simpleCost ? `Simples ${formatBRL(row.simpleCost)}` : row.costMode ?? '-'} />            </div>
+              <MiniMetric label="Configuração" value={row.referenceCost && row.referenceQuantity ? `Ref. ${formatBRL(row.referenceCost)}` : row.simpleCost ? `Simples ${formatBRL(row.simpleCost)}` : row.costMode ?? '-'} />
+            </div>
           </div>
         ))}
       </div>
@@ -1759,10 +1776,11 @@ function ModuleButton({
   return (
     <button
       onClick={onClick}
-      className={`w-[220px] shrink-0 rounded-2xl border p-3 text-left transition xl:w-full xl:p-4 ${active
+      className={`w-[220px] shrink-0 rounded-2xl border p-3 text-left transition xl:w-full xl:p-4 ${
+        active
           ? 'border-primary/40 bg-primary/10 shadow-sm'
           : 'border-border bg-background hover:border-primary/30 hover:bg-secondary/40'
-        }`}
+      }`}
     >
       <div className="flex items-start gap-3">
         <div className={`rounded-xl border p-2 ${active ? 'border-primary/30 bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground'}`}>
@@ -2539,8 +2557,9 @@ function ExportPdfModal({
                   key={module.id}
                   type="button"
                   onClick={() => onToggle(module.id)}
-                  className={`rounded-2xl border p-4 text-left transition ${checked ? `${accent.active} ring-1 ring-white/10` : 'border-border bg-background hover:bg-secondary/40'
-                    }`}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    checked ? `${accent.active} ring-1 ring-white/10` : 'border-border bg-background hover:bg-secondary/40'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
@@ -2643,6 +2662,31 @@ function buildReportPdfHtml(dashboard: ReportsDashboard, filters: ReportFilters,
     const legend = rows.map((row, index) => `<div class="legend-item"><span style="background:${pdfColors[index % pdfColors.length]}"></span><strong>${escapeHtml(row.label)}</strong><em>${escapeHtml(valueLabel(row.value))}</em></div>`).join('')
     return `<div class="chart-box donut-grid"><h3>${escapeHtml(title)}</h3><svg viewBox="0 0 220 220"><circle cx="110" cy="110" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="28"/>${arcs}<text x="110" y="106" text-anchor="middle" font-size="18" font-weight="800" fill="#0f172a">${escapeHtml(formatBRL(total))}</text><text x="110" y="126" text-anchor="middle" font-size="10" fill="#64748b">total</text></svg><div class="legend">${legend}</div></div>`
   }
+  const periodCards = () => {
+    const rows = dashboard.analytics?.periods ?? []
+    if (rows.length === 0) return '<div class="empty-card">Sem períodos no filtro atual.</div>'
+
+    return `<div class="period-grid">${rows.map((row) => {
+      const eventLabel = formatPeriodEvent(row)
+      const eventClass = row.eventTitle ? 'event-pill' : 'event-pill muted-pill'
+      const topProducts = (row.topProducts ?? []).slice(0, 4).map((product) => `<li><span>${escapeHtml(product.name)}</span><strong>${formatNumber(product.quantity)} un. • ${formatBRL(product.revenue)}</strong></li>`).join('')
+      const paymentMethods = (row.paymentMethods ?? []).slice(0, 4).map((method) => `<li><span>${escapeHtml(getPaymentLabel(method.paymentMethod))}</span><strong>${method.orders} • ${formatBRL(method.revenue)}</strong></li>`).join('')
+      return `<article class="period-card">
+        <div class="period-head"><div><p>${escapeHtml(row.label)}</p><h3>${escapeHtml(formatPeriodRange(row))}</h3></div><span class="${eventClass}">${escapeHtml(eventLabel)}</span></div>
+        <div class="period-metrics">
+          <span><em>Receita</em><strong>${formatBRL(row.revenue)}</strong></span>
+          <span><em>Lucro</em><strong>${formatBRL(row.profit)}</strong></span>
+          <span><em>Pagos</em><strong>${row.paidOrders}/${row.orders}</strong></span>
+          <span><em>Ticket</em><strong>${formatBRL(row.averageTicket)}</strong></span>
+        </div>
+        <div class="period-lists">
+          <div><h4>Pagamentos</h4><ul>${paymentMethods || '<li><span>Sem pagamentos</span><strong>-</strong></li>'}</ul></div>
+          <div><h4>Produtos</h4><ul>${topProducts || '<li><span>Sem produtos pagos</span><strong>-</strong></li>'}</ul></div>
+        </div>
+      </article>`
+    }).join('')}</div>`
+  }
+
   const sections: string[] = []
 
   if (selected.has('overview')) {
@@ -2667,9 +2711,8 @@ function buildReportPdfHtml(dashboard: ReportsDashboard, filters: ReportFilters,
     ${pdfDonut(dashboard.charts.paymentMethods.map((row) => ({ label: getPaymentLabel(row.paymentMethod), value: row.revenue })), 'Mix de pagamentos', formatBRL)}
     ${pdfHorizontalBars((dashboard.analytics?.weekdayPerformance ?? []).slice(0, 7).map((row) => ({ label: row.weekday ?? '-', value: row.revenue, detail: `${formatNumber(row.paidOrders)} pedidos pagos • ticket ${formatBRL(row.averageTicket)}` })), 'Receita por dia da semana', formatBRL)}
     ${pdfHorizontalBars((dashboard.analytics?.monthPeriodPerformance ?? []).map((row) => ({ label: row.period ?? '-', value: row.revenue, detail: `${formatNumber(row.paidOrders)} pedidos pagos • lucro ${formatBRL(row.profit)}` })), 'Melhor período do mês', formatBRL)}
-    <h3>Períodos de operação</h3><p class="muted">Separação automática quando existe intervalo maior que 6 horas sem pedidos.</p><table><thead><tr><th>Período</th><th>Intervalo</th><th>Pedidos pagos</th><th>Total pedidos</th><th>Receita</th><th>Lucro</th><th>Ticket</th></tr></thead><tbody>
-      ${tableRows((dashboard.analytics?.periods ?? []).map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(formatPeriodRange(row))}</td><td>${row.paidOrders}</td><td>${row.orders}</td><td>${formatBRL(row.revenue)}</td><td>${formatBRL(row.profit)}</td><td>${formatBRL(row.averageTicket)}</td></tr>`).join(''), 7)}
-    </tbody></table>
+    <h3>Períodos de operação</h3><p class="muted">Separação automática quando existe intervalo maior que 6 horas sem pedidos. Se um evento cruza o intervalo, o período é marcado como referente a esse evento.</p>
+    ${periodCards()}
     <h3>Melhor horário por dia</h3><table><thead><tr><th>Dia</th><th>Melhor horário</th><th>Pedidos pagos</th><th>Receita</th><th>Ticket médio</th></tr></thead><tbody>
       ${tableRows((dashboard.analytics?.bestHourByDay ?? []).slice(-18).map((row) => `<tr><td>${formatDate(row.date)}</td><td>${escapeHtml(row.hour ?? '-')}</td><td>${row.paidOrders}</td><td>${formatBRL(row.revenue)}</td><td>${formatBRL(row.averageTicket)}</td></tr>`).join(''), 5)}
     </tbody></table>
@@ -2722,7 +2765,7 @@ function buildReportPdfHtml(dashboard: ReportsDashboard, filters: ReportFilters,
   }
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" /><title>Relatório ORDR</title><style>
-    *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;color:#0f172a;background:#f8fafc}.page{padding:34px}.hero{border-radius:28px;padding:28px;color:white;background:linear-gradient(135deg,#0891b2,#7c3aed 52%,#059669);box-shadow:0 18px 60px rgba(15,23,42,.18)}.eyebrow{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.14em;opacity:.85}h1{margin:0;font-size:32px}h2{margin:0 0 16px;font-size:22px}h3{margin:18px 0 10px;font-size:15px;color:#334155}.meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px}.pill{border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 11px;background:rgba(255,255,255,.14);font-size:12px}.modules{margin-top:14px;font-size:12px;opacity:.9}.section{break-inside:avoid;margin-top:22px;border:1px solid #e2e8f0;border-radius:24px;background:white;padding:22px;box-shadow:0 10px 28px rgba(15,23,42,.06)}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.metrics.compact{grid-template-columns:repeat(4,1fr)}.metric{border-radius:18px;padding:14px;border:1px solid #e2e8f0}.metric span{display:block;color:#475569;font-size:12px}.metric strong{display:block;margin-top:6px;font-size:20px;color:#0f172a}.metric-cyan{background:#ecfeff;border-color:#a5f3fc}.metric-emerald{background:#ecfdf5;border-color:#a7f3d0}.metric-amber{background:#fffbeb;border-color:#fde68a}.metric-rose{background:#fff1f2;border-color:#fecdd3}.metric-violet{background:#f5f3ff;border-color:#ddd6fe}.metric-pink{background:#fdf2f8;border-color:#fbcfe8}.metric-slate{background:#f8fafc;border-color:#cbd5e1}.chart-box{break-inside:avoid;margin:16px 0 18px;border:1px solid #e2e8f0;border-radius:22px;background:#fff;padding:14px}.chart-box h3{margin:0 0 10px;color:#334155}.donut-grid{display:grid;grid-template-columns:240px 1fr;align-items:center;gap:12px}.legend{display:grid;gap:8px}.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#334155}.legend-item span{display:inline-flex;width:12px;height:12px;border-radius:999px}.legend-item strong{min-width:130px}.legend-item em{font-style:normal;color:#64748b}table{width:100%;border-collapse:collapse;font-size:12px}th{text-align:left;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #e2e8f0;padding:9px 8px}td{border-bottom:1px solid #eef2f7;padding:9px 8px;vertical-align:top}tr:last-child td{border-bottom:0}.muted{color:#64748b}.center{text-align:center}@media print{body{background:white}.page{padding:0}.section{box-shadow:none}}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;color:#0f172a;background:#f8fafc}.page{padding:34px}.hero{border-radius:28px;padding:28px;color:white;background:linear-gradient(135deg,#0891b2,#7c3aed 52%,#059669);box-shadow:0 18px 60px rgba(15,23,42,.18)}.eyebrow{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.14em;opacity:.85}h1{margin:0;font-size:32px}h2{margin:0 0 16px;font-size:22px}h3{margin:18px 0 10px;font-size:15px;color:#334155}.meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px}.pill{border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 11px;background:rgba(255,255,255,.14);font-size:12px}.modules{margin-top:14px;font-size:12px;opacity:.9}.section{break-inside:avoid;margin-top:22px;border:1px solid #e2e8f0;border-radius:24px;background:white;padding:22px;box-shadow:0 10px 28px rgba(15,23,42,.06)}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.metrics.compact{grid-template-columns:repeat(4,1fr)}.metric{border-radius:18px;padding:14px;border:1px solid #e2e8f0}.metric span{display:block;color:#475569;font-size:12px}.metric strong{display:block;margin-top:6px;font-size:20px;color:#0f172a}.metric-cyan{background:#ecfeff;border-color:#a5f3fc}.metric-emerald{background:#ecfdf5;border-color:#a7f3d0}.metric-amber{background:#fffbeb;border-color:#fde68a}.metric-rose{background:#fff1f2;border-color:#fecdd3}.metric-violet{background:#f5f3ff;border-color:#ddd6fe}.metric-pink{background:#fdf2f8;border-color:#fbcfe8}.metric-slate{background:#f8fafc;border-color:#cbd5e1}.chart-box{break-inside:avoid;margin:16px 0 18px;border:1px solid #e2e8f0;border-radius:22px;background:#fff;padding:14px}.chart-box h3{margin:0 0 10px;color:#334155}.donut-grid{display:grid;grid-template-columns:240px 1fr;align-items:center;gap:12px}.legend{display:grid;gap:8px}.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#334155}.legend-item span{display:inline-flex;width:12px;height:12px;border-radius:999px}.legend-item strong{min-width:130px}.legend-item em{font-style:normal;color:#64748b}.empty-card{border:1px dashed #cbd5e1;border-radius:18px;padding:20px;text-align:center;color:#64748b;background:#f8fafc}.period-grid{display:grid;grid-template-columns:1fr;gap:14px;margin:10px 0 18px}.period-card{break-inside:avoid;border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:16px}.period-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;border-bottom:1px solid #eef2f7;padding-bottom:12px}.period-head p{margin:0 0 4px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em}.period-head h3{margin:0;font-size:16px;color:#0f172a}.event-pill{max-width:260px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:7px 10px;font-size:11px;font-weight:800;text-align:right}.muted-pill{background:#f8fafc;border-color:#cbd5e1;color:#64748b}.period-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.period-metrics span{border-radius:14px;background:#f8fafc;border:1px solid #e2e8f0;padding:10px}.period-metrics em{display:block;font-style:normal;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.07em}.period-metrics strong{display:block;margin-top:4px;font-size:14px;color:#0f172a}.period-lists{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}.period-lists h4{margin:0 0 8px;font-size:12px;color:#334155}.period-lists ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}.period-lists li{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#475569}.period-lists li strong{white-space:nowrap;color:#0f172a}table{width:100%;border-collapse:collapse;font-size:12px}th{text-align:left;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #e2e8f0;padding:9px 8px}td{border-bottom:1px solid #eef2f7;padding:9px 8px;vertical-align:top}tr:last-child td{border-bottom:0}.muted{color:#64748b}.center{text-align:center}@media print{body{background:white}.page{padding:0}.section{box-shadow:none}}
   </style></head><body><div class="page"><section class="hero"><p class="eyebrow">ORDR • Relatório gerencial</p><h1>Resumo financeiro e operacional</h1><div class="meta"><span class="pill">Período: ${period}</span><span class="pill">Gerado em: ${generatedAt}</span><span class="pill">Pedidos no filtro: ${summary.totalOrders}</span></div><p class="modules">Módulos exportados: ${selectedModules.map(moduleTitle).join(' • ')}</p></section>${sections.join('')}</div><script>window.addEventListener('load',()=>{setTimeout(()=>window.print(),350)})</script></body></html>`
 }
 

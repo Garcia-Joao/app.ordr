@@ -51,6 +51,16 @@ export type TimeInsightRow = {
 }
 
 
+export type ReportPeriodEventRow = {
+  eventDateId: string
+  title: string
+  startAt: string
+  endAt?: string | null
+  orders: number
+  paidOrders: number
+  revenue: number
+}
+
 export type ReportPeriodRow = {
   id: string
   label: string
@@ -69,6 +79,11 @@ export type ReportPeriodRow = {
   profit: number
   averageTicket: number
   itemsSold: number
+  eventDateId?: string | null
+  eventTitle?: string | null
+  eventStartAt?: string | null
+  eventEndAt?: string | null
+  events: ReportPeriodEventRow[]
   paymentMethods: Array<{ paymentMethod: PaymentMethod; label: string; orders: number; revenue: number }>
   topProducts: Array<{ productId: string; name: string; quantity: number; revenue: number }>
 }
