@@ -29,6 +29,7 @@ import { createOrder, getCategories, getProducts } from '@/lib/api'
 import { getActiveMenu, type Menu } from '@/lib/api/menus'
 import { getStockProducts } from '@/lib/api/stock'
 import { getOrders, reprintOrderReceipt } from '@/lib/api/orders'
+import { getPdvSettings } from '@/lib/api/companies'
 
 type PrintItemMode = 'SEPARATE' | 'GROUPED'
 
@@ -83,8 +84,13 @@ function buildReceiptHtml(order: Order) {
     (sum, item) => sum + Number(getItemPrice(item) ?? 0) * item.quantity,
     0
   )
-  const subtotal = taxApplied && orderTotal > 0 ? orderTotal / 1.1 : calculatedSubtotal
+  const taxRatePercent = Number(order.taxRate ?? 10)
+  const taxRate = taxRatePercent / 100
+  const subtotal = taxApplied && orderTotal > 0 && taxRate > 0
+    ? orderTotal / (1 + taxRate)
+    : calculatedSubtotal
   const tax = taxApplied ? Math.max(0, orderTotal - subtotal) : 0
+  const taxLabel = taxRatePercent.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
   const createdAt = order.createdAt instanceof Date ? order.createdAt : new Date(order.createdAt)
 
   const itemRows = items.map((item) => {
@@ -144,7 +150,7 @@ function buildReceiptHtml(order: Order) {
     ${itemRows}
     <div class="line"></div>
     <div class="row"><span>Subtotal</span><span>${escapeReceiptHtml(formatBRL(subtotal))}</span></div>
-    ${taxApplied ? `<div class="row"><span>Taxa (10%)</span><span>${escapeReceiptHtml(formatBRL(tax))}</span></div>` : ''}
+    ${taxApplied ? `<div class="row"><span>Taxa (${escapeReceiptHtml(taxLabel)}%)</span><span>${escapeReceiptHtml(formatBRL(tax))}</span></div>` : ''}
     <div class="line"></div>
     <div class="row total"><span>Total</span><span>${escapeReceiptHtml(formatBRL(orderTotal))}</span></div>
     <section class="center">
@@ -350,8 +356,12 @@ export default function POSPage() {
   const [printItemModes, setPrintItemModes] = useState<Record<string, PrintItemMode>>({})
 
   const REQUIRE_COMANDA_STORAGE_KEY = 'ordr-settings-require-comanda'
+  const PDV_TAX_ENABLED_STORAGE_KEY = 'ordr-settings-pdv-tax-enabled'
+  const PDV_TAX_RATE_STORAGE_KEY = 'ordr-settings-pdv-tax-rate'
   const [requireComanda, setRequireComanda] = useState(true)
-  const taxRate = 0.1
+  const [pdvTaxEnabled, setPdvTaxEnabled] = useState(true)
+  const [pdvTaxRatePercent, setPdvTaxRatePercent] = useState(10)
+  const taxRate = pdvTaxEnabled ? pdvTaxRatePercent / 100 : 0
   const [activeEventDate, setActiveEventDate] = useState(() =>
     getActiveEventDate()
   )
@@ -416,10 +426,40 @@ export default function POSPage() {
   }, [activeEventDate?.id, currentComandaNumber])
 
   useEffect(() => {
-    const savedRequireComanda = localStorage.getItem(REQUIRE_COMANDA_STORAGE_KEY)
-    if (savedRequireComanda !== null) {
-      setRequireComanda(savedRequireComanda === 'true')
+    async function loadPdvSettings() {
+      try {
+        const settings = await getPdvSettings()
+        setRequireComanda(settings.requireComanda)
+        setPdvTaxEnabled(settings.taxEnabled)
+        setPdvTaxRatePercent(Number(settings.taxRate ?? 10))
+        setApplyTax(settings.taxEnabled)
+
+        localStorage.setItem(REQUIRE_COMANDA_STORAGE_KEY, String(settings.requireComanda))
+        localStorage.setItem(PDV_TAX_ENABLED_STORAGE_KEY, String(settings.taxEnabled))
+        localStorage.setItem(PDV_TAX_RATE_STORAGE_KEY, String(settings.taxRate ?? 10))
+      } catch (error) {
+        console.error('Erro ao carregar configurações do PDV:', error)
+
+        const savedRequireComanda = localStorage.getItem(REQUIRE_COMANDA_STORAGE_KEY)
+        if (savedRequireComanda !== null) {
+          setRequireComanda(savedRequireComanda === 'true')
+        }
+
+        const savedTaxEnabled = localStorage.getItem(PDV_TAX_ENABLED_STORAGE_KEY)
+        if (savedTaxEnabled !== null) {
+          const enabled = savedTaxEnabled === 'true'
+          setPdvTaxEnabled(enabled)
+          setApplyTax(enabled)
+        }
+
+        const savedTaxRate = Number(localStorage.getItem(PDV_TAX_RATE_STORAGE_KEY) ?? 10)
+        if (Number.isFinite(savedTaxRate)) {
+          setPdvTaxRatePercent(savedTaxRate)
+        }
+      }
     }
+
+    loadPdvSettings()
   }, [])
 
   useEffect(() => {
@@ -667,9 +707,9 @@ export default function POSPage() {
     setCurrentComandaNumber(null)
     setCurrentComandaName('')
     setLinkedCustomerId(null)
-    setApplyTax(true)
+    setApplyTax(pdvTaxEnabled)
     setPrintItemModes({})
-  }, [isSubmittingOrder])
+  }, [isSubmittingOrder, pdvTaxEnabled])
 
   const handleCharge = useCallback(async (paymentMethod: PaymentMethod) => {
     try {
@@ -697,7 +737,8 @@ export default function POSPage() {
         0
       )
 
-      const tax = applyTax ? subtotal * taxRate : 0
+      const shouldApplyTax = pdvTaxEnabled && applyTax
+      const tax = shouldApplyTax ? subtotal * taxRate : 0
       const total = subtotal + tax
 
       const newOrder: Order & { eventDateId?: string | null; customerId?: string | null; printItemModes?: Record<string, PrintItemMode> } = {
@@ -710,7 +751,8 @@ export default function POSPage() {
         items: [...currentOrderItems],
         total,
         paymentMethod,
-        taxApplied: applyTax,
+        taxApplied: shouldApplyTax,
+        taxRate: pdvTaxRatePercent,
         status: 'paid',
         createdAt: new Date(),
         paidAt: new Date(),
@@ -756,6 +798,7 @@ export default function POSPage() {
         total: Number(savedOrder.total ?? newOrder.total ?? 0),
         paymentMethod: savedOrder.paymentMethod ?? newOrder.paymentMethod,
         taxApplied: savedOrder.taxApplied ?? newOrder.taxApplied,
+        taxRate: Number(savedOrder.taxRate ?? newOrder.taxRate ?? pdvTaxRatePercent),
         status: savedOrder.status ?? newOrder.status,
         items: newOrder.items,
         createdAt: savedOrder.createdAt
@@ -774,7 +817,7 @@ export default function POSPage() {
       setCurrentComandaName('')
       setLinkedCustomerId(null)
       setCurrentOrderObservation('')
-      setApplyTax(true)
+      setApplyTax(pdvTaxEnabled)
       setPrintItemModes({})
     } catch (err) {
       console.error('Erro ao enviar pedido:', err)
@@ -796,6 +839,9 @@ export default function POSPage() {
     printItemModes,
     linkedCustomerId,
     selectedCategory,
+    pdvTaxEnabled,
+    pdvTaxRatePercent,
+    taxRate,
   ])
 
   const handleSelectOrder = useCallback((order: Order) => {

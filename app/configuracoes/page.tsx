@@ -21,7 +21,7 @@ import {
   KeyRound,
 } from 'lucide-react'
 import { getMe, switchCompany, type AuthCompany, type AuthUser } from '@/lib/api/auth'
-import { createTestCompany, deleteTestCompany } from '@/lib/api/companies'
+import { createTestCompany, deleteTestCompany, getPdvSettings, updatePdvSettings } from '@/lib/api/companies'
 import {
   getSalesEnvironments,
   createSalesEnvironment,
@@ -29,6 +29,8 @@ import {
 } from '@/lib/api/sales-environments'
 
 const REQUIRE_COMANDA_STORAGE_KEY = 'ordr-settings-require-comanda'
+const PDV_TAX_ENABLED_STORAGE_KEY = 'ordr-settings-pdv-tax-enabled'
+const PDV_TAX_RATE_STORAGE_KEY = 'ordr-settings-pdv-tax-rate'
 
 type SalesEnvironment = {
   id: string
@@ -86,6 +88,8 @@ export default function ConfiguracoesPage() {
   const [isCreatingTestCompany, setIsCreatingTestCompany] = useState(false)
   const [deletingTestCompanyId, setDeletingTestCompanyId] = useState<string | null>(null)
   const [requireComanda, setRequireComanda] = useState(true)
+  const [pdvTaxEnabled, setPdvTaxEnabled] = useState(true)
+  const [pdvTaxRate, setPdvTaxRate] = useState('10')
 
   const [salesEnvironments, setSalesEnvironments] = useState<SalesEnvironment[]>([])
   const [isLoadingEnvironments, setIsLoadingEnvironments] = useState(true)
@@ -109,9 +113,28 @@ export default function ConfiguracoesPage() {
         )
         setTestSourceCompanyId(firstAdminProductionCompany?.id ?? '')
 
-        const savedRequireComanda = localStorage.getItem(REQUIRE_COMANDA_STORAGE_KEY)
-        if (savedRequireComanda !== null) {
-          setRequireComanda(savedRequireComanda === 'true')
+        try {
+          const pdvSettings = await getPdvSettings()
+          setRequireComanda(pdvSettings.requireComanda)
+          setPdvTaxEnabled(pdvSettings.taxEnabled)
+          setPdvTaxRate(String(pdvSettings.taxRate ?? 10))
+        } catch (settingsError) {
+          console.error('Erro ao carregar configurações do PDV:', settingsError)
+
+          const savedRequireComanda = localStorage.getItem(REQUIRE_COMANDA_STORAGE_KEY)
+          if (savedRequireComanda !== null) {
+            setRequireComanda(savedRequireComanda === 'true')
+          }
+
+          const savedTaxEnabled = localStorage.getItem(PDV_TAX_ENABLED_STORAGE_KEY)
+          if (savedTaxEnabled !== null) {
+            setPdvTaxEnabled(savedTaxEnabled === 'true')
+          }
+
+          const savedTaxRate = localStorage.getItem(PDV_TAX_RATE_STORAGE_KEY)
+          if (savedTaxRate !== null) {
+            setPdvTaxRate(savedTaxRate)
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar configurações:', error)
@@ -281,7 +304,26 @@ export default function ConfiguracoesPage() {
       setIsSaving(true)
       setSaved(false)
 
-      localStorage.setItem(REQUIRE_COMANDA_STORAGE_KEY, String(requireComanda))
+      const normalizedTaxRate = Number(String(pdvTaxRate).replace(',', '.'))
+
+      if (!Number.isFinite(normalizedTaxRate) || normalizedTaxRate < 0 || normalizedTaxRate > 100) {
+        alert('Informe uma taxa entre 0 e 100%.')
+        return
+      }
+
+      const savedPdvSettings = await updatePdvSettings({
+        requireComanda,
+        taxEnabled: pdvTaxEnabled,
+        taxRate: Number(normalizedTaxRate.toFixed(2)),
+      })
+
+      setRequireComanda(savedPdvSettings.requireComanda)
+      setPdvTaxEnabled(savedPdvSettings.taxEnabled)
+      setPdvTaxRate(String(savedPdvSettings.taxRate ?? 10))
+
+      localStorage.setItem(REQUIRE_COMANDA_STORAGE_KEY, String(savedPdvSettings.requireComanda))
+      localStorage.setItem(PDV_TAX_ENABLED_STORAGE_KEY, String(savedPdvSettings.taxEnabled))
+      localStorage.setItem(PDV_TAX_RATE_STORAGE_KEY, String(savedPdvSettings.taxRate ?? 10))
 
       const targetCompany = companies.find((company) => company.id === selectedCompanyId)
       if (targetCompany?.isTest && !isCompanyAdmin(targetCompany)) {
@@ -790,23 +832,65 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
-            <label className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
-              <div>
-                <span className="text-foreground font-medium">
-                  Exigir número da comanda
-                </span>
-                <p className="text-sm text-muted-foreground">
-                  O PDV só permite finalizar o pedido se o número da comanda estiver preenchido
-                </p>
-              </div>
+            <div className="space-y-3">
+              <label className="flex items-center justify-between gap-4 p-4 bg-secondary/50 rounded-lg">
+                <div>
+                  <span className="text-foreground font-medium">
+                    Exigir número da comanda
+                  </span>
+                  <p className="text-sm text-muted-foreground">
+                    O PDV só permite finalizar o pedido se o número da comanda estiver preenchido
+                  </p>
+                </div>
 
-              <input
-                type="checkbox"
-                checked={requireComanda}
-                onChange={(e) => setRequireComanda(e.target.checked)}
-                className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
-              />
-            </label>
+                <input
+                  type="checkbox"
+                  checked={requireComanda}
+                  onChange={(e) => setRequireComanda(e.target.checked)}
+                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+                />
+              </label>
+
+              <label className="flex items-center justify-between gap-4 p-4 bg-secondary/50 rounded-lg">
+                <div>
+                  <span className="text-foreground font-medium">
+                    Aplicar taxa no PDV
+                  </span>
+                  <p className="text-sm text-muted-foreground">
+                    Quando desligado, o PDV não calcula taxa e o total fica igual ao subtotal
+                  </p>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={pdvTaxEnabled}
+                  onChange={(e) => setPdvTaxEnabled(e.target.checked)}
+                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+                />
+              </label>
+
+              <div className="rounded-lg bg-secondary/50 p-4">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Valor da taxa (%)
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={pdvTaxRate}
+                    disabled={!pdvTaxEnabled}
+                    onChange={(e) => setPdvTaxRate(e.target.value)}
+                    className="h-11 w-full sm:w-40 rounded-lg border border-border bg-background px-3 text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                    placeholder="10"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Padrão: 10%. Esse percentual será usado em novos pedidos e ficará salvo no pedido.
+                  </p>
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="bg-card rounded-xl border border-border p-6">

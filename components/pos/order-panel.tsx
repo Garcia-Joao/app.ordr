@@ -114,8 +114,12 @@ export function OrderPanel({
     0,
   );
 
-  const tax = applyTax ? subtotal * taxRate : 0;
+  const canApplyTax = Number(taxRate) > 0;
+  const tax = canApplyTax && applyTax ? subtotal * taxRate : 0;
   const total = subtotal + tax;
+  const taxPercentLabel = (taxRate * 100).toLocaleString('pt-BR', {
+    maximumFractionDigits: 2,
+  });
 
   const isComandaValid = !requireComanda || comandaNumber !== null;
   const actionDisabled = isLoading || items.length === 0 || !isComandaValid;
@@ -139,22 +143,29 @@ export function OrderPanel({
         </span>
       </div>
 
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>Taxa ({Math.round(taxRate * 100)}%)</span>
-        <span className="flex items-center gap-2">
-          <span className="font-semibold text-foreground">
-            {formatBRL(tax)}
+      {canApplyTax ? (
+        <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>Taxa ({taxPercentLabel}%)</span>
+          <span className="flex items-center gap-2">
+            <span className="font-semibold text-foreground">
+              {formatBRL(tax)}
+            </span>
+            <input
+              type="checkbox"
+              checked={applyTax}
+              disabled={isLoading}
+              onChange={(e) => onSetApplyTax(e.target.checked)}
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              title="Aplicar taxa"
+            />
           </span>
-          <input
-            type="checkbox"
-            checked={applyTax}
-            disabled={isLoading}
-            onChange={(e) => onSetApplyTax(e.target.checked)}
-            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-            title="Aplicar taxa"
-          />
-        </span>
-      </label>
+        </label>
+      ) : (
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>Taxa</span>
+          <span className="font-semibold text-foreground">Desativada</span>
+        </div>
+      )}
 
       <div className="flex justify-between border-t border-border pt-2 text-xl font-black text-foreground">
         <span>Total</span>

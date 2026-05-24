@@ -34,3 +34,21 @@ export function deleteTestCompany(companyId: string) {
     method: 'DELETE',
   })
 }
+
+
+export type PdvSettings = {
+  requireComanda: boolean
+  taxEnabled: boolean
+  taxRate: number
+}
+
+export function getPdvSettings() {
+  return apiFetch<PdvSettings>('/companies/pdv-settings')
+}
+
+export function updatePdvSettings(input: PdvSettings) {
+  return apiFetch<PdvSettings>('/companies/pdv-settings', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}

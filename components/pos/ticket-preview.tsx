@@ -56,8 +56,10 @@ export function TicketPreview({ order, onClose, onPrint }: TicketPreviewProps) {
     0
   )
   const taxApplied = Boolean(order.taxApplied)
-  const subtotal = taxApplied && orderTotal > 0
-    ? orderTotal / 1.1
+  const taxRatePercent = Number(order.taxRate ?? 10)
+  const taxRate = taxRatePercent / 100
+  const subtotal = taxApplied && orderTotal > 0 && taxRate > 0
+    ? orderTotal / (1 + taxRate)
     : calculatedSubtotal
   const tax = taxApplied ? Math.max(0, orderTotal - subtotal) : 0
 
@@ -169,7 +171,7 @@ export function TicketPreview({ order, onClose, onPrint }: TicketPreviewProps) {
               </div>
               {taxApplied && (
                 <div className="flex justify-between gap-3 text-xs opacity-70">
-                  <span>Taxa (10%)</span>
+                  <span>Taxa ({taxRatePercent.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%)</span>
                   <span>{formatBRL(tax)}</span>
                 </div>
               )}

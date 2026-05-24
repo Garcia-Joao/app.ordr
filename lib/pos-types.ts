@@ -95,6 +95,7 @@ export type Order = {
   total: number
   paymentMethod?: PaymentMethod | null
   taxApplied: boolean
+  taxRate?: number | null
   status: 'pending' | 'paid' | 'cancelled'
   createdAt: Date
   paidAt?: Date

@@ -44,6 +44,7 @@ export async function createOrder(
     total: order.total,
     paymentMethod: order.paymentMethod ?? null,
     taxApplied: order.taxApplied,
+    taxRate: order.taxRate ?? 10,
     preferredTerminalDeviceId:
       order.preferredTerminalDeviceId ?? getPreferredPrintTerminalId(),
     orderItems: order.items.map((item) => {
@@ -96,6 +97,7 @@ export type CreateOrderResponse = {
   status: 'pending' | 'paid' | 'cancelled'
   paymentMethod?: 'money' | 'pix' | 'credit' | 'debit' | 'discount' | null
   taxApplied: boolean
+  taxRate?: number | null
   createdAt: string | Date
   paidAt?: string | Date | null
 }
