@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import {
   Plus,
   Search,
@@ -12,6 +12,9 @@ import {
   ChevronRight,
   GripVertical,
   MapPinned,
+  FileDown,
+  FileUp,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   type Product,
@@ -51,6 +54,142 @@ type EditableProductVariationOption = ProductVariationOption & {
 type EditableProductVariationGroup = Omit<ProductVariationGroup, 'options'> & {
   sortOrder?: number
   options: EditableProductVariationOption[]
+}
+
+
+
+type ProductImportEnvironmentPrice = {
+  salesEnvironmentId: string
+  salesEnvironmentName: string
+  price: number
+}
+
+type ProductImportRow = {
+  rowNumber: number
+  name: string
+  categoryName: string
+  emoji: string
+  price: number
+  active: boolean
+  printPortName: string
+  environmentPrices: ProductImportEnvironmentPrice[]
+}
+
+type ProductImportPlan = {
+  rows: ProductImportRow[]
+  toCreate: ProductImportRow[]
+  toUpdate: Array<{ row: ProductImportRow; product: Product }>
+  removed: Product[]
+  categoriesToCreate: string[]
+  errors: string[]
+}
+
+function normalizeText(value: string | null | undefined) {
+  return String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function parseSpreadsheetNumber(value: string | null | undefined) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return 0
+
+  const cleaned = raw.replace(/R\$|\s/g, '')
+  if (cleaned.includes(',')) {
+    return Number(cleaned.replace(/\./g, '').replace(',', '.')) || 0
+  }
+
+  return Number(cleaned) || 0
+}
+
+function parseSpreadsheetBoolean(value: string | null | undefined, fallback = true) {
+  const normalized = normalizeText(value)
+  if (!normalized) return fallback
+  return ['sim', 's', 'true', '1', 'ativo', 'yes', 'y'].includes(normalized)
+}
+
+function escapeCsvCell(value: string | number | boolean | null | undefined) {
+  const text = String(value ?? '')
+  if (/[";\n\r]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`
+  }
+  return text
+}
+
+function parseCsvLine(line: string, delimiter: string) {
+  const cells: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index]
+    const next = line[index + 1]
+
+    if (char === '"' && inQuotes && next === '"') {
+      current += '"'
+      index += 1
+      continue
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes
+      continue
+    }
+
+    if (char === delimiter && !inQuotes) {
+      cells.push(current.trim())
+      current = ''
+      continue
+    }
+
+    current += char
+  }
+
+  cells.push(current.trim())
+  return cells
+}
+
+function parseCsvText(text: string) {
+  const lines = text
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+
+  if (lines.length === 0) return []
+
+  const firstLine = lines[0]
+  const delimiter = (firstLine.match(/;/g)?.length ?? 0) >= (firstLine.match(/,/g)?.length ?? 0)
+    ? ';'
+    : ','
+  const headers = parseCsvLine(firstLine, delimiter)
+
+  return lines.slice(1).map((line, index) => {
+    const cells = parseCsvLine(line, delimiter)
+    const row: Record<string, string> = {}
+
+    headers.forEach((header, headerIndex) => {
+      row[header.trim()] = cells[headerIndex] ?? ''
+    })
+
+    return {
+      rowNumber: index + 2,
+      row,
+    }
+  })
+}
+
+function downloadTextFile(filename: string, content: string, mimeType = 'text/csv;charset=utf-8;') {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 function randomTempId() {
@@ -104,6 +243,10 @@ export default function ProdutosPage() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<CategoryConfig | null>(null)
+  const [importPlan, setImportPlan] = useState<ProductImportPlan | null>(null)
+  const [removeMissingProducts, setRemoveMissingProducts] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
   const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products')
   const [isLoading, setIsLoading] = useState(true)
 
@@ -147,6 +290,260 @@ export default function ProdutosPage() {
       return matchesSearch && matchesCategory && !product.isStockOnly
     })
   }, [products, searchTerm, selectedCategory])
+
+
+
+  function buildProductImportPlan(csvText: string): ProductImportPlan {
+    const parsedRows = parseCsvText(csvText)
+    const productsByName = new Map(products.map((product) => [normalizeText(product.name), product]))
+    const categoriesByName = new Map(categories.map((category) => [normalizeText(category.name), category]))
+    const environmentsByName = new Map(
+      salesEnvironments.map((environment) => [normalizeText(environment.name), environment])
+    )
+    const seenProductNames = new Set<string>()
+    const rows: ProductImportRow[] = []
+    const errors: string[] = []
+
+    for (const parsed of parsedRows) {
+      const row = parsed.row
+      const name = String(row.Nome ?? row.Produto ?? row.name ?? '').trim()
+      const categoryName = String(row.Categoria ?? row.category ?? '').trim()
+      const price = parseSpreadsheetNumber(
+        row['Preço base'] ?? row['Preco base'] ?? row.Preço ?? row.Preco ?? row.price
+      )
+
+      if (!name) {
+        errors.push(`Linha ${parsed.rowNumber}: produto sem nome.`)
+        continue
+      }
+
+      if (seenProductNames.has(normalizeText(name))) {
+        errors.push(`Linha ${parsed.rowNumber}: produto duplicado na planilha: ${name}.`)
+        continue
+      }
+
+      if (!categoryName) {
+        errors.push(`Linha ${parsed.rowNumber}: categoria não informada para ${name}.`)
+      }
+
+      seenProductNames.add(normalizeText(name))
+
+      const environmentPrices: ProductImportEnvironmentPrice[] = []
+      Object.entries(row).forEach(([header, value]) => {
+        const normalizedHeader = normalizeText(header)
+        if (!normalizedHeader.startsWith('ambiente:')) return
+
+        const environmentName = header.split(':').slice(1).join(':').trim()
+        const environment = environmentsByName.get(normalizeText(environmentName))
+        if (!environment) return
+        if (String(value ?? '').trim() === '') return
+
+        environmentPrices.push({
+          salesEnvironmentId: environment.id,
+          salesEnvironmentName: environment.name,
+          price: parseSpreadsheetNumber(value),
+        })
+      })
+
+      rows.push({
+        rowNumber: parsed.rowNumber,
+        name,
+        categoryName,
+        emoji: String(row.Emoji ?? row.emoji ?? '').trim() || '📦',
+        price,
+        active: parseSpreadsheetBoolean(row.Ativo ?? row.active, true),
+        printPortName: String(row['Port de impressão'] ?? row['Port de impressao'] ?? row.PrintPort ?? '').trim(),
+        environmentPrices,
+      })
+    }
+
+    const toUpdate = rows
+      .map((row) => ({ row, product: productsByName.get(normalizeText(row.name)) }))
+      .filter((item): item is { row: ProductImportRow; product: Product } => Boolean(item.product))
+
+    const toCreate = rows.filter((row) => !productsByName.has(normalizeText(row.name)))
+    const importedNames = new Set(rows.map((row) => normalizeText(row.name)))
+    const removed = products.filter(
+      (product) => !product.isStockOnly && !importedNames.has(normalizeText(product.name))
+    )
+
+    const categoriesToCreate = Array.from(
+      new Set(
+        rows
+          .map((row) => row.categoryName.trim())
+          .filter((name) => name && !categoriesByName.has(normalizeText(name)))
+      )
+    )
+
+    return {
+      rows,
+      toCreate,
+      toUpdate,
+      removed,
+      categoriesToCreate,
+      errors,
+    }
+  }
+
+  function handleExportProducts() {
+    const environmentHeaders = salesEnvironments.map((environment) => `Ambiente: ${environment.name}`)
+    const headers = [
+      'Nome',
+      'Categoria',
+      'Emoji',
+      'Preço base',
+      'Ativo',
+      'Port de impressão',
+      ...environmentHeaders,
+    ]
+
+    const lines = [headers.map(escapeCsvCell).join(';')]
+
+    products
+      .filter((product) => !product.isStockOnly)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach((product) => {
+        const category = categories.find((item) => item.id === product.categoryId)
+        const port = printPorts.find((item) => item.id === product.printPortId)
+        const environmentValues = salesEnvironments.map((environment) => {
+          const item = product.environmentPrices?.find(
+            (environmentPrice) => environmentPrice.salesEnvironmentId === environment.id
+          )
+          return item ? Number(item.price).toFixed(2).replace('.', ',') : ''
+        })
+
+        const row = [
+          product.name,
+          category?.name ?? product.category?.name ?? '',
+          product.emoji ?? '',
+          Number(product.price ?? 0).toFixed(2).replace('.', ','),
+          product.active === false ? 'não' : 'sim',
+          port?.name ?? product.printPort?.name ?? '',
+          ...environmentValues,
+        ]
+
+        lines.push(row.map(escapeCsvCell).join(';'))
+      })
+
+    downloadTextFile('produtos-ordr.csv', `\uFEFF${lines.join('\n')}`)
+  }
+
+  async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const plan = buildProductImportPlan(text)
+      setImportPlan(plan)
+      setRemoveMissingProducts(false)
+    } catch (error) {
+      console.error('Erro ao ler planilha:', error)
+      alert('Não foi possível ler a planilha. Exporte uma planilha modelo e tente novamente.')
+    }
+  }
+
+  async function handleApplyImport() {
+    if (!importPlan || importPlan.errors.length > 0) return
+
+    const confirmed = window.confirm('Deseja aplicar esta importação agora?')
+    if (!confirmed) return
+
+    setIsImporting(true)
+
+    try {
+      const categoryMap = new Map(categories.map((category) => [normalizeText(category.name), category]))
+      const createdCategories: CategoryConfig[] = []
+
+      for (const categoryName of importPlan.categoriesToCreate) {
+        const created = await createCategory({
+          name: categoryName,
+          emoji: '📦',
+          printPortId: null,
+        })
+        categoryMap.set(normalizeText(created.name), created)
+        createdCategories.push(created)
+      }
+
+      const portByName = new Map(printPorts.map((port) => [normalizeText(port.name), port]))
+      const savedProducts: Product[] = []
+
+      const buildPayload = (row: ProductImportRow, existing?: Product): Omit<Product, 'id'> => {
+        const category = categoryMap.get(normalizeText(row.categoryName))
+        if (!category) throw new Error(`Categoria não encontrada: ${row.categoryName}`)
+
+        const port = row.printPortName ? portByName.get(normalizeText(row.printPortName)) : null
+
+        return {
+          ...(existing ?? {}),
+          name: row.name,
+          categoryId: category.id,
+          category,
+          emoji: row.emoji || existing?.emoji || '📦',
+          price: row.price,
+          active: row.active,
+          printPortId: row.printPortName ? port?.id ?? null : null,
+          environmentPrices: row.environmentPrices.map((environmentPrice) => ({
+            salesEnvironmentId: environmentPrice.salesEnvironmentId,
+            price: environmentPrice.price,
+          })),
+          variationGroups: existing?.variationGroups ?? [],
+          isStockOnly: existing?.isStockOnly ?? false,
+          trackStock: existing?.trackStock ?? false,
+          stockQuantity: existing?.stockQuantity ?? 0,
+          minStock: existing?.minStock ?? 0,
+          costMode: existing?.costMode ?? 'simple',
+          simpleCost: existing?.simpleCost ?? null,
+          stockUnit: existing?.stockUnit ?? null,
+          referenceQuantity: existing?.referenceQuantity ?? null,
+          referenceCost: existing?.referenceCost ?? null,
+          madeOnDemand: existing?.madeOnDemand ?? false,
+          unlimitedStock: existing?.unlimitedStock ?? false,
+          recipeOutputQuantity: existing?.recipeOutputQuantity ?? null,
+          recipeOutputUnit: existing?.recipeOutputUnit ?? null,
+          recipeItems: existing?.recipeItems ?? [],
+        } as Omit<Product, 'id'>
+      }
+
+      for (const item of importPlan.toUpdate) {
+        const updated = await updateProduct(item.product.id, buildPayload(item.row, item.product))
+        savedProducts.push(updated)
+      }
+
+      for (const row of importPlan.toCreate) {
+        const created = await createProduct(buildPayload(row))
+        savedProducts.push(created)
+      }
+
+      if (removeMissingProducts) {
+        for (const product of importPlan.removed) {
+          await deleteProduct(product.id)
+        }
+      }
+
+      const deletedIds = new Set(removeMissingProducts ? importPlan.removed.map((product) => product.id) : [])
+      const savedById = new Map(savedProducts.map((product) => [product.id, product]))
+
+      setCategories((prev) => [...prev, ...createdCategories])
+      setProducts((prev) => {
+        const updatedExisting = prev
+          .filter((product) => !deletedIds.has(product.id))
+          .map((product) => savedById.get(product.id) ?? product)
+        const existingIds = new Set(updatedExisting.map((product) => product.id))
+        const newProducts = savedProducts.filter((product) => !existingIds.has(product.id))
+        return [...newProducts, ...updatedExisting]
+      })
+
+      setImportPlan(null)
+      alert('Importação aplicada com sucesso.')
+    } catch (error: any) {
+      console.error('Erro ao importar produtos:', error)
+      alert(error?.message || 'Erro ao importar produtos.')
+    } finally {
+      setIsImporting(false)
+    }
+  }
 
   async function handleDeleteProduct(productId: string) {
     const confirmed = window.confirm('Deseja realmente excluir este produto?')
@@ -323,9 +720,37 @@ export default function ProdutosPage() {
               ))}
             </div>
 
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto xl:ml-auto">
+              <button
+                type="button"
+                onClick={handleExportProducts}
+                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+              >
+                <FileDown className="h-4 w-4" />
+                Exportar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => importInputRef.current?.click()}
+                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+              >
+                <FileUp className="h-4 w-4" />
+                Importar
+              </button>
+
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+            </div>
+
             <button
               onClick={handleAddNewProduct}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto xl:ml-auto"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
             >
               <Plus className="h-5 w-5" />
               Novo Produto
@@ -575,6 +1000,17 @@ export default function ProdutosPage() {
         </>
       )}
 
+      {importPlan && (
+        <ProductImportPreviewModal
+          plan={importPlan}
+          removeMissingProducts={removeMissingProducts}
+          isImporting={isImporting}
+          onChangeRemoveMissingProducts={setRemoveMissingProducts}
+          onApply={handleApplyImport}
+          onClose={() => setImportPlan(null)}
+        />
+      )}
+
       {isProductModalOpen && (
         <ProductModal
           product={editingProduct}
@@ -600,6 +1036,197 @@ export default function ProdutosPage() {
           }}
         />
       )}
+    </div>
+  )
+}
+
+
+function ProductImportPreviewModal({
+  plan,
+  removeMissingProducts,
+  isImporting,
+  onChangeRemoveMissingProducts,
+  onApply,
+  onClose,
+}: {
+  plan: ProductImportPlan
+  removeMissingProducts: boolean
+  isImporting: boolean
+  onChangeRemoveMissingProducts: (value: boolean) => void
+  onApply: () => void
+  onClose: () => void
+}) {
+  const canApply = plan.errors.length === 0 && plan.rows.length > 0 && !isImporting
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="flex h-[94svh] w-full max-w-5xl flex-col overflow-hidden rounded-t-[2rem] border border-border bg-card shadow-2xl sm:mx-4 sm:h-auto sm:max-h-[90vh] sm:rounded-2xl">
+        <div className="shrink-0 border-b border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted sm:hidden" />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Confirmar importação de produtos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Revise o que será criado, alterado e removido antes de aplicar.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isImporting}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Novos produtos</p>
+              <p className="mt-2 text-3xl font-bold text-foreground">{plan.toCreate.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Produtos alterados</p>
+              <p className="mt-2 text-3xl font-bold text-foreground">{plan.toUpdate.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Fora da planilha</p>
+              <p className="mt-2 text-3xl font-bold text-foreground">{plan.removed.length}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Categorias novas</p>
+              <p className="mt-2 text-3xl font-bold text-foreground">{plan.categoriesToCreate.length}</p>
+            </div>
+          </div>
+
+          {plan.errors.length > 0 && (
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              <div className="mb-2 flex items-center gap-2 font-semibold">
+                <AlertTriangle className="h-4 w-4" />
+                Corrija os erros antes de importar
+              </div>
+              <ul className="list-disc space-y-1 pl-5">
+                {plan.errors.slice(0, 8).map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+              {plan.errors.length > 8 && (
+                <p className="mt-2 text-xs">+ {plan.errors.length - 8} erro(s)</p>
+              )}
+            </div>
+          )}
+
+          {plan.categoriesToCreate.length > 0 && (
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <h3 className="font-semibold text-foreground">Categorias que serão criadas</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Produtos novos precisam de categoria. Quando a categoria da planilha não existir, ela será criada automaticamente.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {plan.categoriesToCreate.map((category) => (
+                  <span key={category} className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
+                    {category}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <h3 className="font-semibold text-foreground">Produtos que serão criados</h3>
+              <div className="mt-3 max-h-56 space-y-2 overflow-y-auto pr-1">
+                {plan.toCreate.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum produto novo.</p>
+                ) : (
+                  plan.toCreate.map((row) => (
+                    <div key={`${row.rowNumber}-${row.name}`} className="flex items-center justify-between gap-3 rounded-xl bg-card px-3 py-2 text-sm">
+                      <span className="font-medium text-foreground">{row.emoji} {row.name}</span>
+                      <span className="text-muted-foreground">{formatCurrency(row.price)}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <h3 className="font-semibold text-foreground">Produtos que serão alterados</h3>
+              <div className="mt-3 max-h-56 space-y-2 overflow-y-auto pr-1">
+                {plan.toUpdate.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum produto existente será alterado.</p>
+                ) : (
+                  plan.toUpdate.map(({ row, product }) => (
+                    <div key={product.id} className="rounded-xl bg-card px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-foreground">{row.emoji} {row.name}</span>
+                        <span className="text-muted-foreground">{formatCurrency(product.price)} → {formatCurrency(row.price)}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Categoria: {row.categoryName} • Ambientes: {row.environmentPrices.length}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {plan.removed.length > 0 && (
+            <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="font-semibold text-foreground">Produtos removidos da planilha</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Escolha se produtos que existem no sistema, mas não aparecem na planilha importada, devem permanecer ou ser removidos.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={removeMissingProducts}
+                    onChange={(event) => onChangeRemoveMissingProducts(event.target.checked)}
+                  />
+                  Remover do sistema
+                </label>
+              </div>
+
+              <div className="mt-3 flex max-h-32 flex-wrap gap-2 overflow-y-auto">
+                {plan.removed.map((product) => (
+                  <span key={product.id} className="rounded-full bg-card px-3 py-1 text-xs text-muted-foreground">
+                    {product.emoji} {product.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:p-6 sm:pb-6">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isImporting}
+              className="min-h-11 rounded-2xl bg-secondary px-4 py-3 font-bold text-secondary-foreground sm:min-w-32 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              onClick={onApply}
+              disabled={!canApply}
+              className="min-h-11 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground shadow-sm sm:min-w-44 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isImporting ? 'Importando...' : 'Aplicar importação'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
