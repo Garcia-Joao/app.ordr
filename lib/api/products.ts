@@ -1,8 +1,17 @@
 import { apiFetch } from './client'
 import type { Product } from '../pos-types'
 
-export function getProducts() {
-  return apiFetch<Product[]>('/products')
+export type GetProductsOptions = {
+  activeMenuOnly?: boolean
+  includeInactive?: boolean
+}
+
+export function getProducts(options: GetProductsOptions = {}) {
+  const params = new URLSearchParams()
+  if (options.activeMenuOnly) params.set('menu', 'active')
+  if (options.includeInactive) params.set('includeInactive', 'true')
+  const query = params.toString()
+  return apiFetch<Product[]>(`/products${query ? `?${query}` : ''}`)
 }
 
 export function getProductById(productId: string) {

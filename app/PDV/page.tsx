@@ -444,7 +444,7 @@ export default function POSPage() {
       try {
         const [posProductsData, stockProductsData, categoriesData, ordersData] =
           await Promise.all([
-            getProducts(),
+            getProducts({ activeMenuOnly: true }),
             getStockProducts(),
             getCategories(),
             getOrders(true),
@@ -499,7 +499,7 @@ export default function POSPage() {
       try {
         const [posProductsData, stockProductsData, categoriesData] =
           await Promise.all([
-            getProducts(),
+            getProducts({ activeMenuOnly: true }),
             getStockProducts(),
             getCategories(),
           ])
@@ -714,7 +714,7 @@ export default function POSPage() {
       const savedOrder = await createOrder(newOrder, activeSalesEnvironmentId)
 
       const [refreshedPosProducts, refreshedStockProducts] = await Promise.all([
-        getProducts(),
+        getProducts({ activeMenuOnly: true }),
         getStockProducts(),
       ])
 

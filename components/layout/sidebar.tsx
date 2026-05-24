@@ -91,7 +91,14 @@ const navGroups: NavGroup[] = [
         href: '/produtos',
         icon: Package,
         label: 'Produtos',
-        description: 'Cardápio e preços',
+        description: 'Produtos base e estoque',
+        requiredPermissions: ['products.view'],
+      },
+      {
+        href: '/cardapios',
+        icon: ClipboardList,
+        label: 'Cardápios',
+        description: 'Menus ativos e preços por operação',
         requiredPermissions: ['products.view'],
       },
       {

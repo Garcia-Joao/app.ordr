@@ -280,6 +280,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (normalizedPathname.startsWith('/interno')) return 'PDV Interno'
     if (normalizedPathname.startsWith('/pedidos')) return 'Pedidos'
     if (normalizedPathname.startsWith('/produtos')) return 'Produtos'
+    if (normalizedPathname.startsWith('/cardapios')) return 'Cardápios'
     if (normalizedPathname.startsWith('/clientes')) return 'Clientes'
     if (normalizedPathname.startsWith('/relatorios')) return 'Relatórios'
     if (normalizedPathname.startsWith('/dispositivos')) return 'Dispositivos'

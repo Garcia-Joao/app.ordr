@@ -339,7 +339,7 @@ export default function InternoPage() {
           environmentsData,
         ] = await Promise.all([
           getInternalCustomers(),
-          getProducts(),
+          getProducts({ activeMenuOnly: true }),
           getStockProducts(),
           getCategories(),
           getSalesEnvironments(),
@@ -381,7 +381,7 @@ export default function InternoPage() {
           environmentsData,
         ] = await Promise.all([
           getInternalCustomers(),
-          getProducts(),
+          getProducts({ activeMenuOnly: true }),
           getStockProducts(),
           getCategories(),
           getSalesEnvironments(),
@@ -755,7 +755,7 @@ export default function InternoPage() {
       await createOrder(order, selectedSalesEnvironmentId)
 
       const [refreshedPosProducts, refreshedStockProducts] = await Promise.all([
-        getProducts(),
+        getProducts({ activeMenuOnly: true }),
         getStockProducts(),
       ])
 

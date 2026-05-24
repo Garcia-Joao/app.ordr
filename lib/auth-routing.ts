@@ -29,6 +29,11 @@ export const APP_ROUTE_ACCESS: AppRouteAccess[] = [
     permissions: ['products.view'],
   },
   {
+    path: '/cardapios/',
+    label: 'Cardápios',
+    permissions: ['products.view'],
+  },
+  {
     path: '/clientes/',
     label: 'Clientes',
     permissions: ['customers.view'],
