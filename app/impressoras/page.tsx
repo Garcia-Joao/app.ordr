@@ -31,6 +31,11 @@ import {
   type PrintTerminal,
 } from '@/lib/api/printers'
 import { openOrdrTerminalWithFallback } from '@/lib/open-terminal'
+import {
+  clearPreferredPrintTerminalId,
+  getPreferredPrintTerminalId,
+  setPreferredPrintTerminalId,
+} from '@/lib/print-terminal-preference'
 
 const TERMINAL_ONLINE_THRESHOLD_MS = 45 * 1000
 
@@ -197,10 +202,12 @@ export default function ImpressorasPage() {
   const [isPortModalOpen, setIsPortModalOpen] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [printTemplates, setPrintTemplates] = useState<PrintTemplates>(DEFAULT_PRINT_TEMPLATES)
+  const [preferredTerminalId, setPreferredTerminalIdState] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const onlineTerminals = useMemo(() => getLatestOnlineTerminals(terminals), [terminals])
+  const preferredTerminal = onlineTerminals.find((terminal) => terminal.id === preferredTerminalId) ?? null
   const hasOnlineTerminal = onlineTerminals.length > 0
   const portStats = useMemo(() => getPortStats(ports), [ports])
 
@@ -232,12 +239,40 @@ export default function ImpressorasPage() {
   }, [])
 
   useEffect(() => {
+    setPreferredTerminalIdState(getPreferredPrintTerminalId())
+
+    function syncPreference() {
+      setPreferredTerminalIdState(getPreferredPrintTerminalId())
+    }
+
+    window.addEventListener('ordr-print-terminal-preference-updated', syncPreference)
+    window.addEventListener('storage', syncPreference)
+
+    return () => {
+      window.removeEventListener('ordr-print-terminal-preference-updated', syncPreference)
+      window.removeEventListener('storage', syncPreference)
+    }
+  }, [])
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       loadData({ silent: true })
     }, 15_000)
 
     return () => window.clearInterval(interval)
   }, [])
+
+  function handleSelectPreferredTerminal(terminalId: string) {
+    setPreferredPrintTerminalId(terminalId)
+    setPreferredTerminalIdState(terminalId)
+    setMessage('Terminal de impressão deste computador atualizado.')
+  }
+
+  function handleClearPreferredTerminal() {
+    clearPreferredPrintTerminalId()
+    setPreferredTerminalIdState(null)
+    setMessage('Este computador voltou para o modo automático de impressão.')
+  }
 
   function handleCreatePort() {
     setEditingPort(null)
@@ -420,7 +455,7 @@ export default function ImpressorasPage() {
                   </h2>
                   <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                     {hasOnlineTerminal
-                      ? 'Somente terminais online aparecem abaixo. Os registros antigos/offline ficam ocultos para evitar confusão.'
+                      ? 'Somente terminais online aparecem abaixo. Escolha qual deles este computador deve usar ao vender no PDV.'
                       : 'Nenhum ORDR Terminal está online agora. Abra o terminal no computador conectado às impressoras para vincular ports.'}
                   </p>
                 </div>
@@ -443,9 +478,35 @@ export default function ImpressorasPage() {
             </div>
 
             {hasOnlineTerminal && (
-              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              <div className="mt-5 space-y-4">
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+                        Terminal deste computador
+                      </p>
+                      <h3 className="mt-1 text-lg font-black text-foreground">
+                        {preferredTerminal ? preferredTerminal.name : 'Modo automático'}
+                      </h3>
+                      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                        Esta escolha fica salva só neste navegador/computador. O PDV enviará as impressões preferencialmente para o terminal escolhido.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleClearPreferredTerminal}
+                      disabled={!preferredTerminalId}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-bold text-foreground transition hover:bg-accent/10 disabled:opacity-50"
+                    >
+                      Usar automático
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-2">
                 {onlineTerminals.map((terminal) => (
-                  <article key={terminal.id} className="rounded-2xl border border-green-500/20 bg-card p-4 shadow-sm">
+                  <article key={terminal.id} className={`rounded-2xl border bg-card p-4 shadow-sm ${preferredTerminalId === terminal.id ? 'border-primary ring-2 ring-primary/20' : 'border-green-500/20'}`}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="truncate text-base font-black text-foreground">{terminal.name}</p>
@@ -473,8 +534,22 @@ export default function ImpressorasPage() {
                         <strong className="block truncate text-foreground">{terminal.id}</strong>
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPreferredTerminal(terminal.id)}
+                      disabled={preferredTerminalId === terminal.id}
+                      className={`mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-black transition ${
+                        preferredTerminalId === terminal.id
+                          ? 'bg-primary/10 text-primary'
+                          : 'border border-border bg-background text-foreground hover:bg-accent/10'
+                      }`}
+                    >
+                      {preferredTerminalId === terminal.id ? 'Selecionado para este computador' : 'Usar este terminal neste computador'}
+                    </button>
                   </article>
                 ))}
+                </div>
               </div>
             )}
           </section>
