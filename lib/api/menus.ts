@@ -60,6 +60,17 @@ export function activateMenu(menuId: string) {
   return apiFetch<{ menu: Menu }>(`/menus/${menuId}/activate`, { method: 'POST' })
 }
 
+export function deactivateMenu(menuId: string) {
+  return apiFetch<{ menu: Menu }>(`/menus/${menuId}/deactivate`, { method: 'POST' })
+}
+
+export function duplicateMenu(menuId: string, input: { name?: string; active?: boolean } = {}) {
+  return apiFetch<{ menu: Menu }>(`/menus/${menuId}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 export function deleteMenu(menuId: string) {
   return apiFetch<{ ok: true }>(`/menus/${menuId}`, { method: 'DELETE' })
 }
