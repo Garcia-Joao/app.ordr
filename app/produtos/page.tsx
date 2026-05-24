@@ -165,19 +165,24 @@ function parseCsvText(text: string) {
     : ','
   const headers = parseCsvLine(firstLine, delimiter)
 
-  return lines.slice(1).map((line, index) => {
-    const cells = parseCsvLine(line, delimiter)
-    const row: Record<string, string> = {}
+  return lines
+    .slice(1)
+    .map((line, index) => {
+      const cells = parseCsvLine(line, delimiter)
+      const row: Record<string, string> = {}
 
-    headers.forEach((header, headerIndex) => {
-      row[header.trim()] = cells[headerIndex] ?? ''
+      headers.forEach((header, headerIndex) => {
+        row[header.trim()] = cells[headerIndex] ?? ''
+      })
+
+      return {
+        rowNumber: index + 2,
+        row,
+      }
     })
-
-    return {
-      rowNumber: index + 2,
-      row,
-    }
-  })
+    .filter(({ row }) =>
+      Object.values(row).some((value) => String(value ?? '').trim().length > 0)
+    )
 }
 
 function downloadTextFile(filename: string, content: string, mimeType = 'text/csv;charset=utf-8;') {
