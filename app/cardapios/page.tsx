@@ -222,6 +222,7 @@ export default function CardapiosPage() {
   const [draft, setDraft] = useState<DraftMenu>({ ...emptyDraft, items: [] })
   const [editingMenu, setEditingMenu] = useState<Menu | null>(null)
   const [menuModalOpen, setMenuModalOpen] = useState(false)
+  const [addProductsModalOpen, setAddProductsModalOpen] = useState(false)
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
   const [duplicateName, setDuplicateName] = useState('')
   const [importModalOpen, setImportModalOpen] = useState(false)
@@ -306,6 +307,7 @@ export default function CardapiosPage() {
     setDraft(menuToDraft(menu))
     setProductSearch('')
     setCategoryFilter('all')
+    setAddProductsModalOpen(false)
     setMenuModalOpen(true)
   }
 
@@ -388,6 +390,7 @@ export default function CardapiosPage() {
       const result = editingMenu ? await updateMenu(editingMenu.id, payload) : await createMenu(payload)
       await loadData(result.menu.id)
       setMenuModalOpen(false)
+      setAddProductsModalOpen(false)
       setEditingMenu(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar cardápio.')
@@ -746,9 +749,9 @@ export default function CardapiosPage() {
 
       {menuModalOpen ? (
         <Modal
-          title={editingMenu ? `Editar ${editingMenu.name}` : 'Novo cardápio'}
-          subtitle="Use a busca, filtros e lista lateral para montar o cardápio com preços próprios."
-          onClose={() => setMenuModalOpen(false)}
+          title={editingMenu ? `Editar preços · ${editingMenu.name}` : 'Novo cardápio'}
+          subtitle={editingMenu ? 'Edição focada em preços e visibilidade. Para incluir novos itens, use o botão Adicionar produtos.' : 'Monte o cardápio escolhendo produtos, categorias inteiras e preços próprios.'}
+          onClose={() => { setMenuModalOpen(false); setAddProductsModalOpen(false) }}
         >
           <div className="max-h-[calc(92vh-86px)] overflow-y-auto p-4 md:p-5">
             <div className="grid gap-3 md:grid-cols-2">
@@ -762,132 +765,264 @@ export default function CardapiosPage() {
               </label>
             </div>
 
-            <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_380px]">
-              <section className="rounded-3xl border border-border p-4">
+            {editingMenu ? (
+              <section className="mt-5 rounded-3xl border border-border bg-card p-4">
                 <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <h3 className="font-semibold text-foreground">Produtos disponíveis</h3>
-                    <p className="text-xs text-muted-foreground">Selecione todos os produtos, uma categoria inteira ou itens individuais.</p>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Buscar produto" className="w-full rounded-2xl border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary sm:w-56" />
-                    </div>
-                    <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="rounded-2xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
-                      <option value="all">Todas categorias</option>
-                      {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-muted/30 p-3">
-                  <div className="text-xs text-muted-foreground">
-                    <strong className="text-foreground">{filteredProducts.length}</strong> produto(s) visível(eis) no filtro atual · <strong className="text-foreground">{filteredProducts.filter((product) => selectedProductIds.has(product.id)).length}</strong> selecionado(s)
+                    <h3 className="font-semibold text-foreground">Edição de preços</h3>
+                    <p className="text-xs text-muted-foreground">Ajuste valores, oculte produtos ou remova itens deste cardápio sem passar pela seleção completa.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={selectAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted">
-                      Selecionar todos visíveis
+                    <button type="button" onClick={() => setAddProductsModalOpen(true)} className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2 text-sm font-semibold hover:bg-muted">
+                      <PackagePlus className="h-4 w-4" /> Adicionar produtos
                     </button>
-                    <button type="button" onClick={removeAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">
-                      Desmarcar visíveis
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2 text-sm font-semibold hover:bg-muted">
+                      <Upload className="h-4 w-4" /> Importar preços
                     </button>
                   </div>
                 </div>
 
-                <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
-                  {productCategoryGroups.map((group) => {
-                    const selectedCount = group.products.filter((product) => selectedProductIds.has(product.id)).length
-                    const allSelected = group.products.length > 0 && selectedCount === group.products.length
-                    return (
-                      <div key={group.id} className="overflow-hidden rounded-3xl border border-border bg-background">
-                        <div className="flex flex-col gap-3 border-b border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <h4 className="truncate font-semibold text-foreground">{group.emoji ? `${group.emoji} ` : ''}{group.name}</h4>
-                            <p className="text-xs text-muted-foreground">{selectedCount}/{group.products.length} produto(s) selecionado(s)</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleCategoryProducts(group.products)}
-                            className={`rounded-2xl px-3 py-2 text-xs font-semibold ${allSelected ? 'border border-border bg-background text-muted-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`}
-                          >
-                            {allSelected ? 'Desmarcar categoria' : 'Adicionar categoria'}
-                          </button>
-                        </div>
-                        <div className="grid gap-2 p-3 md:grid-cols-2">
-                          {group.products.map((product) => {
-                            const selected = selectedProductIds.has(product.id)
-                            return (
-                              <button key={product.id} type="button" onClick={() => toggleProduct(product)} className={`rounded-2xl border p-3 text-left transition ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'}`}>
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="truncate font-medium text-foreground">{product.emoji ? `${product.emoji} ` : ''}{product.name}</p>
-                                    <p className="text-xs text-muted-foreground">Preço padrão {formatBRL(Number(product.price ?? 0))}</p>
-                                  </div>
-                                  <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{selected ? 'Incluído' : 'Adicionar'}</span>
-                                </div>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {productCategoryGroups.length === 0 ? (
-                    <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">Nenhum produto encontrado com os filtros atuais.</p>
-                  ) : null}
-                </div>
-              </section>
-
-              <section className="rounded-3xl border border-border p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground">Selecionados</h3>
-                    <p className="text-xs text-muted-foreground">{draft.items.length} produto(s) no cardápio.</p>
+                <div className="overflow-hidden rounded-3xl border border-border">
+                  <div className="hidden grid-cols-[1fr_150px_170px_110px_56px] gap-3 border-b border-border bg-muted/40 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid">
+                    <span>Produto</span>
+                    <span>Preço padrão</span>
+                    <span>Preço no cardápio</span>
+                    <span>Visível</span>
+                    <span></span>
                   </div>
-                  <button type="button" onClick={() => setDraft((current) => ({ ...current, items: [] }))} className="text-xs font-semibold text-destructive">Limpar</button>
-                </div>
-                <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
-                  {selectedItems.map((item) => (
-                    <div key={item.productId} className="rounded-2xl border border-border bg-background p-3">
-                      <div className="mb-3 flex items-start justify-between gap-2">
+                  <div className="max-h-[560px] divide-y divide-border overflow-y-auto">
+                    {selectedItems.map((item) => (
+                      <div key={item.productId} className="grid gap-3 p-4 md:grid-cols-[1fr_150px_170px_110px_56px] md:items-center">
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">{item.product?.emoji ? `${item.product.emoji} ` : ''}{item.product?.name}</p>
                           <p className="text-xs text-muted-foreground">{item.product?.category?.name ?? 'Sem categoria'}</p>
                         </div>
-                        <button type="button" onClick={() => toggleProduct(item.product as Product)} className="rounded-xl p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
-                      </div>
-                      <div className="grid grid-cols-[1fr_auto] gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">Preço padrão</p>
+                          <p className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-muted-foreground md:inline-flex">{formatBRL(Number(item.product?.price ?? 0))}</p>
+                        </div>
                         <label className="text-xs font-medium text-muted-foreground">
-                          <span className="flex flex-wrap items-center justify-between gap-2">
-                            <span>Preço neste cardápio</span>
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                              Padrão {formatBRL(Number(item.product?.price ?? 0))}
-                            </span>
-                          </span>
-                          <input type="number" step="0.01" value={item.price} onChange={(event) => updateItem(item.productId, { price: Number(event.target.value) })} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
+                          <span className="md:hidden">Preço no cardápio</span>
+                          <input type="number" step="0.01" value={item.price} onChange={(event) => updateItem(item.productId, { price: Number(event.target.value) })} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary md:mt-0" />
                         </label>
-                        <label className="flex items-end gap-2 pb-2 text-xs font-medium text-muted-foreground">
-                          <input type="checkbox" checked={item.active} onChange={(event) => updateItem(item.productId, { active: event.target.checked })} /> Visível
+                        <label className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <input type="checkbox" checked={item.active} onChange={(event) => updateItem(item.productId, { active: event.target.checked })} />
+                          {item.active ? 'Sim' : 'Não'}
                         </label>
+                        <button type="button" onClick={() => toggleProduct(item.product as Product)} className="inline-flex items-center justify-center rounded-xl border border-border p-2 text-muted-foreground hover:bg-muted md:w-10">
+                          <X className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                  ))}
-                  {selectedItems.length === 0 ? <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">Nenhum produto selecionado.</p> : null}
+                    ))}
+                    {selectedItems.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-muted-foreground">Nenhum produto neste cardápio. Use “Adicionar produtos” para incluir itens.</div>
+                    ) : null}
+                  </div>
                 </div>
               </section>
-            </div>
+            ) : (
+              <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_380px]">
+                <section className="rounded-3xl border border-border p-4">
+                  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="font-semibold text-foreground">Produtos disponíveis</h3>
+                      <p className="text-xs text-muted-foreground">Selecione todos os produtos, uma categoria inteira ou itens individuais.</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Buscar produto" className="w-full rounded-2xl border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary sm:w-56" />
+                      </div>
+                      <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="rounded-2xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+                        <option value="all">Todas categorias</option>
+                        {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      <strong className="text-foreground">{filteredProducts.length}</strong> produto(s) visível(eis) no filtro atual · <strong className="text-foreground">{filteredProducts.filter((product) => selectedProductIds.has(product.id)).length}</strong> selecionado(s)
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={selectAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted">
+                        Selecionar todos visíveis
+                      </button>
+                      <button type="button" onClick={removeAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">
+                        Desmarcar visíveis
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
+                    {productCategoryGroups.map((group) => {
+                      const selectedCount = group.products.filter((product) => selectedProductIds.has(product.id)).length
+                      const allSelected = group.products.length > 0 && selectedCount === group.products.length
+                      return (
+                        <div key={group.id} className="overflow-hidden rounded-3xl border border-border bg-background">
+                          <div className="flex flex-col gap-3 border-b border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <h4 className="truncate font-semibold text-foreground">{group.emoji ? `${group.emoji} ` : ''}{group.name}</h4>
+                              <p className="text-xs text-muted-foreground">{selectedCount}/{group.products.length} produto(s) selecionado(s)</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleCategoryProducts(group.products)}
+                              className={`rounded-2xl px-3 py-2 text-xs font-semibold ${allSelected ? 'border border-border bg-background text-muted-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`}
+                            >
+                              {allSelected ? 'Desmarcar categoria' : 'Adicionar categoria'}
+                            </button>
+                          </div>
+                          <div className="grid gap-2 p-3 md:grid-cols-2">
+                            {group.products.map((product) => {
+                              const selected = selectedProductIds.has(product.id)
+                              return (
+                                <button key={product.id} type="button" onClick={() => toggleProduct(product)} className={`rounded-2xl border p-3 text-left transition ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'}`}>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium text-foreground">{product.emoji ? `${product.emoji} ` : ''}{product.name}</p>
+                                      <p className="text-xs text-muted-foreground">Preço padrão {formatBRL(Number(product.price ?? 0))}</p>
+                                    </div>
+                                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{selected ? 'Incluído' : 'Adicionar'}</span>
+                                  </div>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {productCategoryGroups.length === 0 ? (
+                      <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">Nenhum produto encontrado com os filtros atuais.</p>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="rounded-3xl border border-border p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-foreground">Selecionados</h3>
+                      <p className="text-xs text-muted-foreground">{draft.items.length} produto(s) no cardápio.</p>
+                    </div>
+                    <button type="button" onClick={() => setDraft((current) => ({ ...current, items: [] }))} className="text-xs font-semibold text-destructive">Limpar</button>
+                  </div>
+                  <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
+                    {selectedItems.map((item) => (
+                      <div key={item.productId} className="rounded-2xl border border-border bg-background p-3">
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-foreground">{item.product?.emoji ? `${item.product.emoji} ` : ''}{item.product?.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.product?.category?.name ?? 'Sem categoria'}</p>
+                          </div>
+                          <button type="button" onClick={() => toggleProduct(item.product as Product)} className="rounded-xl p-1 text-muted-foreground hover:bg-muted"><X className="h-4 w-4" /></button>
+                        </div>
+                        <div className="grid grid-cols-[1fr_auto] gap-2">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            <span className="flex flex-wrap items-center justify-between gap-2">
+                              <span>Preço neste cardápio</span>
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                                Padrão {formatBRL(Number(item.product?.price ?? 0))}
+                              </span>
+                            </span>
+                            <input type="number" step="0.01" value={item.price} onChange={(event) => updateItem(item.productId, { price: Number(event.target.value) })} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
+                          </label>
+                          <label className="flex items-end gap-2 pb-2 text-xs font-medium text-muted-foreground">
+                            <input type="checkbox" checked={item.active} onChange={(event) => updateItem(item.productId, { active: event.target.checked })} /> Visível
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                    {selectedItems.length === 0 ? <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">Nenhum produto selecionado.</p> : null}
+                  </div>
+                </section>
+              </div>
+            )}
 
             <div className="mt-5 flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-between">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border px-4 py-2 text-sm font-semibold hover:bg-muted">
-                <Upload className="h-4 w-4" /> Importar produtos da planilha
-              </button>
+              {!editingMenu ? (
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border px-4 py-2 text-sm font-semibold hover:bg-muted">
+                  <Upload className="h-4 w-4" /> Importar produtos da planilha
+                </button>
+              ) : <span />}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setMenuModalOpen(false)} className="rounded-2xl border border-border px-4 py-2 text-sm font-semibold hover:bg-muted">Cancelar</button>
+                <button type="button" onClick={() => { setMenuModalOpen(false); setAddProductsModalOpen(false) }} className="rounded-2xl border border-border px-4 py-2 text-sm font-semibold hover:bg-muted">Cancelar</button>
                 <button type="button" disabled={saving} onClick={saveMenu} className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
                   <Save className="h-4 w-4" /> Salvar cardápio
                 </button>
               </div>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
+      {addProductsModalOpen && editingMenu ? (
+        <Modal title="Adicionar produtos ao cardápio" subtitle="Escolha categorias inteiras ou produtos individuais. Depois volte para ajustar os preços." onClose={() => setAddProductsModalOpen(false)}>
+          <div className="max-h-[calc(92vh-86px)] overflow-y-auto p-4 md:p-5">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground">Produtos disponíveis</h3>
+                <p className="text-xs text-muted-foreground">Produtos já incluídos aparecem marcados. Clicar novamente remove do cardápio.</p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Buscar produto" className="w-full rounded-2xl border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary sm:w-56" />
+                </div>
+                <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="rounded-2xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary">
+                  <option value="all">Todas categorias</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-muted/30 p-3">
+              <div className="text-xs text-muted-foreground">
+                <strong className="text-foreground">{filteredProducts.length}</strong> produto(s) visível(eis) · <strong className="text-foreground">{filteredProducts.filter((product) => selectedProductIds.has(product.id)).length}</strong> no cardápio
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={selectAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted">Selecionar todos visíveis</button>
+                <button type="button" onClick={removeAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">Desmarcar visíveis</button>
+              </div>
+            </div>
+
+            <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
+              {productCategoryGroups.map((group) => {
+                const selectedCount = group.products.filter((product) => selectedProductIds.has(product.id)).length
+                const allSelected = group.products.length > 0 && selectedCount === group.products.length
+                return (
+                  <div key={group.id} className="overflow-hidden rounded-3xl border border-border bg-background">
+                    <div className="flex flex-col gap-3 border-b border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <h4 className="truncate font-semibold text-foreground">{group.emoji ? `${group.emoji} ` : ''}{group.name}</h4>
+                        <p className="text-xs text-muted-foreground">{selectedCount}/{group.products.length} produto(s) no cardápio</p>
+                      </div>
+                      <button type="button" onClick={() => toggleCategoryProducts(group.products)} className={`rounded-2xl px-3 py-2 text-xs font-semibold ${allSelected ? 'border border-border bg-background text-muted-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`}>
+                        {allSelected ? 'Desmarcar categoria' : 'Adicionar categoria'}
+                      </button>
+                    </div>
+                    <div className="grid gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
+                      {group.products.map((product) => {
+                        const selected = selectedProductIds.has(product.id)
+                        return (
+                          <button key={product.id} type="button" onClick={() => toggleProduct(product)} className={`rounded-2xl border p-3 text-left transition ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-foreground">{product.emoji ? `${product.emoji} ` : ''}{product.name}</p>
+                                <p className="text-xs text-muted-foreground">Preço padrão {formatBRL(Number(product.price ?? 0))}</p>
+                              </div>
+                              <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{selected ? 'Incluído' : 'Adicionar'}</span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-5 flex justify-end border-t border-border pt-4">
+              <button type="button" onClick={() => setAddProductsModalOpen(false)} className="rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Concluir e ajustar preços</button>
             </div>
           </div>
         </Modal>
