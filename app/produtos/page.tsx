@@ -686,16 +686,54 @@ export default function ProdutosPage() {
 
       {activeTab === 'products' ? (
         <>
-          <div className="flex flex-col gap-3 border-b border-border bg-card/50 px-4 py-4 sm:px-6 xl:flex-row xl:items-center">
-            <div className="relative w-full flex-1 xl:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar produto..."
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+          <div className="flex flex-col gap-3 border-b border-border bg-card/50 px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative w-full lg:flex-1 lg:min-w-[420px] 2xl:min-w-[560px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar produto por nome, categoria ou port..."
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="h-11 w-full rounded-lg border border-border bg-input py-2 pl-10 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto lg:ml-auto">
+                <button
+                  type="button"
+                  onClick={handleExportProducts}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  <FileDown className="h-4 w-4" />
+                  Exportar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  <FileUp className="h-4 w-4" />
+                  Importar
+                </button>
+
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+              </div>
+
+              <button
+                onClick={handleAddNewProduct}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
+              >
+                <Plus className="h-5 w-5" />
+                Novo Produto
+              </button>
             </div>
 
             <div className="flex max-w-full items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
@@ -724,42 +762,6 @@ export default function ProdutosPage() {
                 </button>
               ))}
             </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto xl:ml-auto">
-              <button
-                type="button"
-                onClick={handleExportProducts}
-                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-              >
-                <FileDown className="h-4 w-4" />
-                Exportar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => importInputRef.current?.click()}
-                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-              >
-                <FileUp className="h-4 w-4" />
-                Importar
-              </button>
-
-              <input
-                ref={importInputRef}
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleImportFile}
-                className="hidden"
-              />
-            </div>
-
-            <button
-              onClick={handleAddNewProduct}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
-            >
-              <Plus className="h-5 w-5" />
-              Novo Produto
-            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">
