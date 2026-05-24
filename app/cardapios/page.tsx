@@ -256,6 +256,25 @@ export default function CardapiosPage() {
       .sort((a, b) => String(a.name).localeCompare(String(b.name)))
   }, [categoryFilter, productSearch, products])
 
+  const productCategoryGroups = useMemo(() => {
+    const groups = new Map<string, { id: string; name: string; emoji?: string; products: Product[] }>()
+
+    for (const product of filteredProducts) {
+      const id = product.categoryId || 'uncategorized'
+      if (!groups.has(id)) {
+        groups.set(id, {
+          id,
+          name: product.category?.name ?? categories.find((category) => category.id === product.categoryId)?.name ?? 'Sem categoria',
+          emoji: product.category?.emoji ?? categories.find((category) => category.id === product.categoryId)?.emoji,
+          products: [],
+        })
+      }
+      groups.get(id)?.products.push(product)
+    }
+
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [categories, filteredProducts])
+
   async function loadData(preferredMenuId?: string | null) {
     setLoading(true)
     setError('')
@@ -300,6 +319,48 @@ export default function CardapiosPage() {
           : [...current.items, { productId: product.id, price: Number(product.price ?? 0), active: true }],
       }
     })
+  }
+
+  function addProductsToDraft(productsToAdd: Product[]) {
+    if (productsToAdd.length === 0) return
+    setDraft((current) => {
+      const existingIds = new Set(current.items.map((item) => item.productId))
+      const nextItems = [...current.items]
+
+      for (const product of productsToAdd) {
+        if (existingIds.has(product.id)) continue
+        nextItems.push({ productId: product.id, price: Number(product.price ?? 0), active: true })
+        existingIds.add(product.id)
+      }
+
+      return { ...current, items: nextItems }
+    })
+  }
+
+  function removeProductsFromDraft(productsToRemove: Product[]) {
+    if (productsToRemove.length === 0) return
+    const idsToRemove = new Set(productsToRemove.map((product) => product.id))
+    setDraft((current) => ({
+      ...current,
+      items: current.items.filter((item) => !idsToRemove.has(item.productId)),
+    }))
+  }
+
+  function toggleCategoryProducts(categoryProducts: Product[]) {
+    const allSelected = categoryProducts.length > 0 && categoryProducts.every((product) => selectedProductIds.has(product.id))
+    if (allSelected) {
+      removeProductsFromDraft(categoryProducts)
+      return
+    }
+    addProductsToDraft(categoryProducts)
+  }
+
+  function selectAllVisibleProducts() {
+    addProductsToDraft(filteredProducts)
+  }
+
+  function removeAllVisibleProducts() {
+    removeProductsFromDraft(filteredProducts)
   }
 
   function updateItem(productId: string, patch: Partial<DraftItem>) {
@@ -706,7 +767,7 @@ export default function CardapiosPage() {
                 <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground">Produtos disponíveis</h3>
-                    <p className="text-xs text-muted-foreground">Clique para adicionar ou remover do cardápio.</p>
+                    <p className="text-xs text-muted-foreground">Selecione todos os produtos, uma categoria inteira ou itens individuais.</p>
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <div className="relative">
@@ -719,21 +780,62 @@ export default function CardapiosPage() {
                     </select>
                   </div>
                 </div>
-                <div className="grid max-h-[520px] gap-2 overflow-y-auto pr-1 md:grid-cols-2">
-                  {filteredProducts.map((product) => {
-                    const selected = selectedProductIds.has(product.id)
+
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-muted/30 p-3">
+                  <div className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">{filteredProducts.length}</strong> produto(s) visível(eis) no filtro atual · <strong className="text-foreground">{filteredProducts.filter((product) => selectedProductIds.has(product.id)).length}</strong> selecionado(s)
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={selectAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted">
+                      Selecionar todos visíveis
+                    </button>
+                    <button type="button" onClick={removeAllVisibleProducts} className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">
+                      Desmarcar visíveis
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
+                  {productCategoryGroups.map((group) => {
+                    const selectedCount = group.products.filter((product) => selectedProductIds.has(product.id)).length
+                    const allSelected = group.products.length > 0 && selectedCount === group.products.length
                     return (
-                      <button key={product.id} type="button" onClick={() => toggleProduct(product)} className={`rounded-2xl border p-3 text-left transition ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'}`}>
-                        <div className="flex items-center justify-between gap-3">
+                      <div key={group.id} className="overflow-hidden rounded-3xl border border-border bg-background">
+                        <div className="flex flex-col gap-3 border-b border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
-                            <p className="truncate font-medium text-foreground">{product.emoji ? `${product.emoji} ` : ''}{product.name}</p>
-                            <p className="text-xs text-muted-foreground">{product.category?.name ?? 'Sem categoria'} · Base {formatBRL(Number(product.price ?? 0))}</p>
+                            <h4 className="truncate font-semibold text-foreground">{group.emoji ? `${group.emoji} ` : ''}{group.name}</h4>
+                            <p className="text-xs text-muted-foreground">{selectedCount}/{group.products.length} produto(s) selecionado(s)</p>
                           </div>
-                          <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{selected ? 'Incluído' : 'Adicionar'}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleCategoryProducts(group.products)}
+                            className={`rounded-2xl px-3 py-2 text-xs font-semibold ${allSelected ? 'border border-border bg-background text-muted-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`}
+                          >
+                            {allSelected ? 'Desmarcar categoria' : 'Adicionar categoria'}
+                          </button>
                         </div>
-                      </button>
+                        <div className="grid gap-2 p-3 md:grid-cols-2">
+                          {group.products.map((product) => {
+                            const selected = selectedProductIds.has(product.id)
+                            return (
+                              <button key={product.id} type="button" onClick={() => toggleProduct(product)} className={`rounded-2xl border p-3 text-left transition ${selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40'}`}>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate font-medium text-foreground">{product.emoji ? `${product.emoji} ` : ''}{product.name}</p>
+                                    <p className="text-xs text-muted-foreground">Preço padrão {formatBRL(Number(product.price ?? 0))}</p>
+                                  </div>
+                                  <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{selected ? 'Incluído' : 'Adicionar'}</span>
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
                     )
                   })}
+                  {productCategoryGroups.length === 0 ? (
+                    <p className="rounded-2xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">Nenhum produto encontrado com os filtros atuais.</p>
+                  ) : null}
                 </div>
               </section>
 
@@ -757,7 +859,12 @@ export default function CardapiosPage() {
                       </div>
                       <div className="grid grid-cols-[1fr_auto] gap-2">
                         <label className="text-xs font-medium text-muted-foreground">
-                          Preço neste cardápio
+                          <span className="flex flex-wrap items-center justify-between gap-2">
+                            <span>Preço neste cardápio</span>
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                              Padrão {formatBRL(Number(item.product?.price ?? 0))}
+                            </span>
+                          </span>
                           <input type="number" step="0.01" value={item.price} onChange={(event) => updateItem(item.productId, { price: Number(event.target.value) })} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
                         </label>
                         <label className="flex items-end gap-2 pb-2 text-xs font-medium text-muted-foreground">
