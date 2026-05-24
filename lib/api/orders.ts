@@ -4,6 +4,7 @@ import {
   getVariationOptionPriceModifierForEnvironment,
 } from '@/lib/pos-types'
 import { apiFetch } from '@/lib/api/client'
+import { getPreferredPrintTerminalId } from '@/lib/print-terminal-preference'
 
 type PrintItemMode = 'SEPARATE' | 'GROUPED'
 
@@ -11,6 +12,7 @@ type OrderWithPrintModes = Order & {
   eventDateId?: string | null
   customerId?: string | null
   printItemModes?: Record<string, PrintItemMode>
+  preferredTerminalDeviceId?: string | null
 }
 
 function getOrderItemPrintKey(item: Order['items'][number]) {
@@ -42,6 +44,8 @@ export async function createOrder(
     total: order.total,
     paymentMethod: order.paymentMethod ?? null,
     taxApplied: order.taxApplied,
+    preferredTerminalDeviceId:
+      order.preferredTerminalDeviceId ?? getPreferredPrintTerminalId(),
     orderItems: order.items.map((item) => {
       const unitPrice = Number(getItemPrice(item, salesEnvironmentId) ?? 0)
 
@@ -116,6 +120,7 @@ export function cancelOrder(orderId: string) {
 export function reprintOrderTickets(orderId: string) {
   return apiFetch<{ jobs: Array<{ id: string; status: string }> }>(`/orders/${orderId}/reprint`, {
     method: 'POST',
+    body: JSON.stringify({ preferredTerminalDeviceId: getPreferredPrintTerminalId() }),
   })
 }
 
@@ -123,5 +128,6 @@ export function reprintOrderTickets(orderId: string) {
 export function reprintOrderReceipt(orderId: string) {
   return apiFetch<{ jobs: Array<{ id: string; status: string }> }>(`/orders/${orderId}/reprint-receipt`, {
     method: 'POST',
+    body: JSON.stringify({ preferredTerminalDeviceId: getPreferredPrintTerminalId() }),
   })
 }

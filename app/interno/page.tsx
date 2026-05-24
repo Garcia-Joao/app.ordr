@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { getCategories } from '@/lib/api/categories'
 import { getProducts } from '@/lib/api/products'
+import { getActiveMenu, type Menu } from '@/lib/api/menus'
 import { getStockProducts } from '@/lib/api/stock'
 import { createOrder } from '@/lib/api/orders'
 import { listenStockUpdated } from '@/lib/events/stock-events'
@@ -279,6 +280,7 @@ export default function InternoPage() {
 
   const [categories, setCategories] = useState<CategoryConfig[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [activeMenu, setActiveMenu] = useState<Menu | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [productSearch, setProductSearch] = useState('')
   const [customerSearch, setCustomerSearch] = useState('')
@@ -337,12 +339,14 @@ export default function InternoPage() {
           stockProductsData,
           categoriesData,
           environmentsData,
+          activeMenuData,
         ] = await Promise.all([
           getInternalCustomers(),
           getProducts({ activeMenuOnly: true }),
           getStockProducts(),
           getCategories(),
           getSalesEnvironments(),
+          getActiveMenu(),
         ])
 
         const productsData = mergeProductsWithStockInfo(
@@ -357,6 +361,7 @@ export default function InternoPage() {
 
         setCustomers(customersData)
         setProducts(productsData)
+        setActiveMenu(activeMenuData.menu ?? null)
         setCategories(categoriesWithProducts)
         setSalesEnvironments(environmentsData)
         setSelectedCategory('')
@@ -379,12 +384,14 @@ export default function InternoPage() {
           stockProductsData,
           categoriesData,
           environmentsData,
+          activeMenuData,
         ] = await Promise.all([
           getInternalCustomers(),
           getProducts({ activeMenuOnly: true }),
           getStockProducts(),
           getCategories(),
           getSalesEnvironments(),
+          getActiveMenu(),
         ])
 
         const productsData = mergeProductsWithStockInfo(
@@ -397,6 +404,7 @@ export default function InternoPage() {
         )
 
         setProducts(productsData)
+        setActiveMenu(activeMenuData.menu ?? null)
         setCategories(categoriesWithProducts)
 
         setSelectedCategory((current) => {
@@ -754,9 +762,10 @@ export default function InternoPage() {
 
       await createOrder(order, selectedSalesEnvironmentId)
 
-      const [refreshedPosProducts, refreshedStockProducts] = await Promise.all([
+      const [refreshedPosProducts, refreshedStockProducts, activeMenuData] = await Promise.all([
         getProducts({ activeMenuOnly: true }),
         getStockProducts(),
+        getActiveMenu(),
       ])
 
       const refreshedProducts = mergeProductsWithStockInfo(
@@ -770,6 +779,7 @@ export default function InternoPage() {
       )
 
       setProducts(refreshedProducts)
+      setActiveMenu(activeMenuData.menu ?? null)
       setCategories(categoriesWithProducts)
 
       setSelectedCategory((current) => {
@@ -1201,6 +1211,10 @@ export default function InternoPage() {
               )}
 
               <div className="border-b border-border bg-card px-4 py-4 sm:px-6">
+                <div className="mb-2 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span className="truncate">Cardápio ativo: <strong className="text-foreground">{activeMenu?.name ?? 'Nenhum'}</strong></span>
+                </div>
                 <div className="relative max-w-md">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input

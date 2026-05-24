@@ -5,6 +5,9 @@ export type Product = {
   description?: string | null
   emoji: string
   price: number
+  defaultPrice?: number
+  menuPrice?: number
+  effectiveDefaultPrice?: number
   active?: boolean
 
   isStockOnly?: boolean
@@ -126,15 +129,18 @@ export function getProductBasePriceForEnvironment(
   product: Product,
   salesEnvironmentId?: string | null
 ): number {
+  const activeMenuPrice = product.menuPrice ?? product.effectiveDefaultPrice ?? null
+  const fallbackPrice = Number(activeMenuPrice ?? product.price ?? 0)
+
   if (!salesEnvironmentId) {
-    return Number(product.price ?? 0)
+    return fallbackPrice
   }
 
   const environmentPrice = product.environmentPrices?.find(
     (item) => item.salesEnvironmentId === salesEnvironmentId
   )
 
-  return Number(environmentPrice?.price ?? product.price ?? 0)
+  return Number(environmentPrice?.price ?? fallbackPrice)
 }
 
 export function getVariationOptionPriceModifierForEnvironment(

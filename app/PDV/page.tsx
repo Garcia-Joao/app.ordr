@@ -26,6 +26,7 @@ import { formatBRL, getItemPrice } from '@/lib/pos-types'
 import { setMobileOverlayOpen } from '@/lib/mobile-overlay-state'
 
 import { createOrder, getCategories, getProducts } from '@/lib/api'
+import { getActiveMenu, type Menu } from '@/lib/api/menus'
 import { getStockProducts } from '@/lib/api/stock'
 import { getOrders, reprintOrderReceipt } from '@/lib/api/orders'
 
@@ -327,6 +328,7 @@ export default function POSPage() {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false)
   const [categories, setCategories] = useState<CategoryConfig[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [activeMenu, setActiveMenu] = useState<Menu | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [productSearch, setProductSearch] = useState('')
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItem[]>([])
@@ -442,12 +444,13 @@ export default function POSPage() {
   useEffect(() => {
     async function loadPage() {
       try {
-        const [posProductsData, stockProductsData, categoriesData, ordersData] =
+        const [posProductsData, stockProductsData, categoriesData, ordersData, activeMenuData] =
           await Promise.all([
             getProducts({ activeMenuOnly: true }),
             getStockProducts(),
             getCategories(),
             getOrders(true),
+            getActiveMenu(),
           ])
 
         const productsData = mergeProductsWithStockInfo(
@@ -456,6 +459,7 @@ export default function POSPage() {
         )
 
         setProducts(productsData)
+        setActiveMenu(activeMenuData.menu ?? null)
 
         const categoriesWithProducts = getCategoriesWithSellableProducts(
           categoriesData,
@@ -497,11 +501,12 @@ export default function POSPage() {
   useEffect(() => {
     return listenStockUpdated(async () => {
       try {
-        const [posProductsData, stockProductsData, categoriesData] =
+        const [posProductsData, stockProductsData, categoriesData, activeMenuData] =
           await Promise.all([
             getProducts({ activeMenuOnly: true }),
             getStockProducts(),
             getCategories(),
+            getActiveMenu(),
           ])
 
         const productsData = mergeProductsWithStockInfo(
@@ -515,6 +520,7 @@ export default function POSPage() {
         )
 
         setProducts(productsData)
+        setActiveMenu(activeMenuData.menu ?? null)
         setCategories(categoriesWithProducts)
 
         setSelectedCategory((current) => {
@@ -713,9 +719,10 @@ export default function POSPage() {
 
       const savedOrder = await createOrder(newOrder, activeSalesEnvironmentId)
 
-      const [refreshedPosProducts, refreshedStockProducts] = await Promise.all([
+      const [refreshedPosProducts, refreshedStockProducts, activeMenuData] = await Promise.all([
         getProducts({ activeMenuOnly: true }),
         getStockProducts(),
+        getActiveMenu(),
       ])
 
       const refreshedProducts = mergeProductsWithStockInfo(
@@ -724,6 +731,7 @@ export default function POSPage() {
       )
 
       setProducts(refreshedProducts)
+      setActiveMenu(activeMenuData.menu ?? null)
 
       const categoriesWithProducts = getCategoriesWithSellableProducts(
         categories,
@@ -920,6 +928,10 @@ export default function POSPage() {
           </div>
 
           <div className="border-b border-border bg-card px-3 py-3 sm:px-5 sm:py-4">
+            <div className="mb-2 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="truncate">Cardápio ativo: <strong className="text-foreground">{activeMenu?.name ?? 'Nenhum'}</strong></span>
+            </div>
             <div className="relative max-w-md sm:max-w-lg">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input

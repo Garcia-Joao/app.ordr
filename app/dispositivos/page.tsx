@@ -9,6 +9,7 @@ import {
   Monitor,
   Power,
   Printer,
+  Settings2,
   RefreshCw,
   Smartphone,
   Tablet,
@@ -18,6 +19,12 @@ import {
   XCircle,
 } from 'lucide-react'
 import { deleteDevice, listDevices, type CompanyDevice, type DeviceType } from '@/lib/api/devices'
+import {
+  clearPreferredPrintTerminalId,
+  getCurrentCompanyDeviceId,
+  getPreferredPrintTerminalId,
+  setPreferredPrintTerminalId,
+} from '@/lib/print-terminal-preference'
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -83,6 +90,8 @@ export default function DispositivosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
+  const [preferredTerminalId, setPreferredTerminalIdState] = useState<string | null>(null)
+  const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null)
 
   async function loadDevices({ silent = false } = {}) {
     try {
@@ -104,13 +113,25 @@ export default function DispositivosPage() {
   }
 
   useEffect(() => {
+    setPreferredTerminalIdState(getPreferredPrintTerminalId())
+    setCurrentDeviceId(getCurrentCompanyDeviceId())
     loadDevices()
 
     const interval = window.setInterval(() => {
       loadDevices({ silent: true })
     }, 30_000)
 
-    return () => window.clearInterval(interval)
+    function handlePreferenceUpdated() {
+      setPreferredTerminalIdState(getPreferredPrintTerminalId())
+      setCurrentDeviceId(getCurrentCompanyDeviceId())
+    }
+
+    window.addEventListener('ordr-print-terminal-preference-updated', handlePreferenceUpdated)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('ordr-print-terminal-preference-updated', handlePreferenceUpdated)
+    }
   }, [])
 
   async function handleDeleteDevice(device: CompanyDevice) {
@@ -129,7 +150,23 @@ export default function DispositivosPage() {
     }
   }
 
+
+  function handleSelectPreferredTerminal(terminalDeviceId: string) {
+    setPreferredPrintTerminalId(terminalDeviceId)
+    setPreferredTerminalIdState(terminalDeviceId)
+  }
+
+  function handleClearPreferredTerminal() {
+    clearPreferredPrintTerminalId()
+    setPreferredTerminalIdState(null)
+  }
+
   const onlineDevices = devices.filter((device) => device.status === 'online').length
+  const availablePrintTerminals = devices.filter((device) => device.clientType === 'ELECTRON' && device.isPrintTerminal && device.printTerminalEnabled)
+  const currentDeviceTerminal = availablePrintTerminals.find((device) => device.id === currentDeviceId) ?? null
+  const preferredTerminal = preferredTerminalId
+    ? availablePrintTerminals.find((device) => device.id === preferredTerminalId) ?? null
+    : null
   const totalSales = devices.reduce((sum, device) => sum + device.totalSales, 0)
   const totalOrders = devices.reduce((sum, device) => sum + device.salesCount, 0)
   const printTerminals = devices.filter((device) => device.isPrintTerminal && device.printTerminalEnabled).length
@@ -201,6 +238,16 @@ export default function DispositivosPage() {
         />
       </div>
 
+      <PrintTerminalPreferenceCard
+        terminals={availablePrintTerminals}
+        currentDeviceTerminal={currentDeviceTerminal}
+        preferredTerminal={preferredTerminal}
+        preferredTerminalId={preferredTerminalId}
+        onSelectTerminal={handleSelectPreferredTerminal}
+        onUseCurrentTerminal={() => currentDeviceTerminal && handleSelectPreferredTerminal(currentDeviceTerminal.id)}
+        onClear={handleClearPreferredTerminal}
+      />
+
       {error && (
         <div className="mx-4 mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive sm:mx-6">
           {error}
@@ -229,6 +276,92 @@ export default function DispositivosPage() {
             </p>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+
+function PrintTerminalPreferenceCard({
+  terminals,
+  currentDeviceTerminal,
+  preferredTerminal,
+  preferredTerminalId,
+  onSelectTerminal,
+  onUseCurrentTerminal,
+  onClear,
+}: {
+  terminals: CompanyDevice[]
+  currentDeviceTerminal: CompanyDevice | null
+  preferredTerminal: CompanyDevice | null
+  preferredTerminalId: string | null
+  onSelectTerminal: (terminalDeviceId: string) => void
+  onUseCurrentTerminal: () => void
+  onClear: () => void
+}) {
+  const selectedLabel = preferredTerminal
+    ? preferredTerminal.name
+    : preferredTerminalId
+      ? 'Terminal não encontrado nesta empresa'
+      : 'Automático / compatibilidade'
+
+  return (
+    <div className="border-b border-border bg-card/80 px-4 py-4 sm:px-6">
+      <div className="rounded-3xl border border-border bg-background p-4 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Settings2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-wide text-foreground">
+                Terminal de impressão deste computador
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                A escolha fica salva somente neste computador. Use um terminal de outro PC ou o próprio terminal quando este computador também estiver rodando o Electron.
+              </p>
+              <p className="mt-2 text-xs font-semibold text-muted-foreground">
+                Selecionado: <span className="text-foreground">{selectedLabel}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <select
+              value={preferredTerminalId ?? ''}
+              onChange={(event) => {
+                const value = event.target.value
+                if (value) onSelectTerminal(value)
+                else onClear()
+              }}
+              className="h-11 min-w-[260px] rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Automático / compatibilidade</option>
+              {terminals.map((terminal) => (
+                <option key={terminal.id} value={terminal.id}>
+                  {terminal.name}{terminal.status === 'online' ? ' · online' : ' · offline'}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={onUseCurrentTerminal}
+              disabled={!currentDeviceTerminal}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Usar este terminal
+            </button>
+
+            <button
+              type="button"
+              onClick={onClear}
+              className="inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              Limpar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
